@@ -12,13 +12,25 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CupidDating">
         <activity
-            android:name=".register"
+            android:name=".ProfileDetails"
             android:exported="false" />
         <activity
-            android:name=".loginpage"
+            android:name=".menu"
             android:exported="false" />
+        <activity
+            android:name=".ItemUserCard"
+            android:exported="true" />
+        <activity
+            android:name=".registerPage"
+            android:exported="true" />
+        <activity
+            android:name=".LoginPage"
+            android:exported="true" />
         <activity
             android:name=".MainActivity"
+            android:exported="true" />
+        <activity
+            android:name=".LandingPage"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

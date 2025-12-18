@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:context=".registerPage">
 
     <LinearLayout
+        android:id="@+id/LL_signUpPage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
@@ -15,85 +19,162 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
-            android:id="@+id/imageView3"
+            android:id="@+id/IV_loginLogo"
             android:layout_width="150dp"
             android:layout_height="150dp"
-            android:layout_marginBottom="20dp"
-            app:srcCompat="@drawable/cupidlogo" />
+            android:layout_marginBottom="30dp"
+            app:srcCompat="@drawable/cupid_logo_red" />
 
         <TextView
-            android:id="@+id/textView2"
+            android:id="@+id/TV_loginH1"
             android:layout_width="300dp"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
+            android:layout_marginBottom="30dp"
             android:text="Sign up to continue"
             android:textAlignment="center"
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/button"
+        <EditText
+            android:id="@+id/edt_signUpEmail"
             android:layout_width="300dp"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/edittext_circular"
+            android:ems="10"
+            android:hint="Enter email"
+            android:inputType="text"
+            android:textSize="14dp" />
+
+        <EditText
+            android:id="@+id/edt_signUpPass"
+            android:layout_width="300dp"
+            android:layout_height="40dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/edittext_circular"
+            android:ems="10"
+            android:hint="Enter password"
+            android:inputType="textPassword"
+            android:textSize="14dp" />
+
+        <Button
+            android:id="@+id/btn_signUp"
+            android:layout_width="300dp"
+            android:layout_height="50dp"
+            android:layout_marginBottom="40dp"
             android:backgroundTint="#E94057"
-            android:text="Continue with email"
-            app:strokeColor="#E94057"
+            android:text="Sign up"
+            android:textColor="#FFFFFF"
+            app:cornerRadius="10dp"
+            app:strokeColor="#FFFFFF"
             app:strokeWidth="1dp" />
-
-        <Button
-            android:id="@+id/button2"
-            android:layout_width="300dp"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:backgroundTint="#FFFFFF"
-            android:text="Use Phone Number"
-            android:textColor="#E94057"
-            app:strokeColor="#E94057"
-            app:strokeWidth="1dp" />
-
-        <TextView
-            android:id="@+id/textView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="20dp"
-            android:text="or sign up with"
-            android:textAlignment="center"
-            android:textColor="#E94057" />
 
         <LinearLayout
+            android:id="@+id/LL_altSignUpTxt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="30dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="65dp"
+            android:paddingRight="65dp">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#A0A0A0" />
+
+            <TextView
+                android:id="@+id/TV_orSignUpWith"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:text="or sign up with"
+                android:textColor="#000000" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#A0A0A0" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/LL_signUpSocmeds"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="horizontal">
 
             <ImageButton
-                android:id="@+id/imageButton3"
+                android:id="@+id/signUp_Facebook"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
-                android:background="@android:color/transparent"
+                android:background="?attr/selectableItemBackgroundBorderless"
                 android:backgroundTint="@null"
                 android:scaleType="fitCenter"
                 app:srcCompat="@drawable/facebooklogo" />
 
             <ImageButton
-                android:id="@+id/imageButton4"
+                android:id="@+id/signUp_Google"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:layout_marginHorizontal="30dp"
-                android:background="@android:color/transparent"
+                android:background="?attr/selectableItemBackgroundBorderless"
                 android:backgroundTint="@null"
                 android:scaleType="fitCenter"
                 app:srcCompat="@drawable/googlelogo" />
 
             <ImageButton
-                android:id="@+id/imageButton5"
+                android:id="@+id/signUp_Apple"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
-                android:background="@android:color/transparent"
+                android:background="?attr/selectableItemBackgroundBorderless"
                 android:backgroundTint="@null"
                 android:scaleType="fitCenter"
                 app:srcCompat="@drawable/applelogo" />
         </LinearLayout>
 
     </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/LL_loginPage2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:gravity="bottom"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/TV_signUpIsAcc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Already have an acocunt?"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_isLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="4dp"
+            android:layout_weight="0"
+            android:background="@android:color/transparent"
+            android:includeFontPadding="false"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingLeft="0dp"
+            android:paddingRight="0dp"
+            android:text="Login"
+            android:textColor="#E94057"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
