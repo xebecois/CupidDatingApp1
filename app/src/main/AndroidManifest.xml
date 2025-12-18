@@ -13,10 +13,7 @@
         android:theme="@style/Theme.CupidDating">
         <activity
             android:name=".ProfileDetails"
-            android:exported="false" />
-        <activity
-            android:name=".menu"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".ItemUserCard"
             android:exported="true" />

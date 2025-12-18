@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "678089216161",
+    "project_id": "datingapplication23",
+    "storage_bucket": "datingapplication23.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678089216161:android:f5c0d119da541bd84ce0e0",
+        "android_client_info": {
+          "package_name": "com.example.cupiddating"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "678089216161-vg7ae18lncvmalh2g2g79ar6em10rgs4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cupiddating",
+            "certificate_hash": "0a42f25026e069915f15274376da544489c90e24"
+          }
+        },
+        {
+          "client_id": "678089216161-puelu7lfc0muq3sc6kfkr6u8iupuj6v7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCx5Ei9Vp_N3RaauxF-fN_sT3o1v64HqG0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "678089216161-puelu7lfc0muq3sc6kfkr6u8iupuj6v7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678089216161:android:949ad8aaf1d05b6f4ce0e0",
+        "android_client_info": {
+          "package_name": "com.example.firebase"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "678089216161-puelu7lfc0muq3sc6kfkr6u8iupuj6v7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCx5Ei9Vp_N3RaauxF-fN_sT3o1v64HqG0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "678089216161-puelu7lfc0muq3sc6kfkr6u8iupuj6v7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
