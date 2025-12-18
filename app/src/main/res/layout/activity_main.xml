@@ -26,6 +26,7 @@
             android:orientation="horizontal">
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/CV_undoMain"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
                 android:layout_marginStart="25dp"
@@ -34,7 +35,7 @@
                 app:cardElevation="3dp">
 
                 <ImageButton
-                    android:id="@+id/btnUndo"
+                    android:id="@+id/btnUndo_main"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="@android:color/transparent"
@@ -50,7 +51,7 @@
                 android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/textView4"
+                    android:id="@+id/TV_mainH1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
@@ -59,7 +60,7 @@
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/textView5"
+                    android:id="@+id/TV_mainSH1"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
@@ -68,6 +69,7 @@
             </LinearLayout>
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/CV_filterMain"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
                 android:layout_marginEnd="25dp"
@@ -110,13 +112,14 @@
             android:orientation="horizontal">
 
             <LinearLayout
+                android:id="@+id/LL_mainHome"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
                 <View
-                    android:id="@+id/lineHome"
+                    android:id="@+id/lineMainHome"
                     android:layout_width="wrap_content"
                     android:layout_height="3dp"
                     android:layout_gravity="center_horizontal"
@@ -124,7 +127,7 @@
                     android:visibility="visible" />
 
                 <ImageButton
-                    android:id="@+id/btnHome"
+                    android:id="@+id/btnMainHome"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="#00FFFFFF"
@@ -133,13 +136,14 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/LL_mainMatches"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
                 <View
-                    android:id="@+id/lineMatches"
+                    android:id="@+id/lineMainMatches"
                     android:layout_width="wrap_content"
                     android:layout_height="3dp"
                     android:layout_gravity="center_horizontal"
@@ -147,7 +151,7 @@
                     android:visibility="invisible" />
 
                 <ImageButton
-                    android:id="@+id/btnMatches"
+                    android:id="@+id/btnMainMatches"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="#00FFFFFF"
@@ -157,13 +161,14 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/LL_mainMessages"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
                 <View
-                    android:id="@+id/lineMessages"
+                    android:id="@+id/lineMainMessages"
                     android:layout_width="wrap_content"
                     android:layout_height="3dp"
                     android:layout_gravity="center_horizontal"
@@ -171,7 +176,7 @@
                     android:visibility="invisible" />
 
                 <ImageButton
-                    android:id="@+id/btnMessages"
+                    android:id="@+id/btnMainMessages"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="#00FFFFFF"
@@ -181,13 +186,14 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/LL_mainProfile"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
                 <View
-                    android:id="@+id/lineProfile"
+                    android:id="@+id/lineMainProfile"
                     android:layout_width="wrap_content"
                     android:layout_height="3dp"
                     android:layout_gravity="center_horizontal"
@@ -195,7 +201,7 @@
                     android:visibility="invisible" />
 
                 <ImageButton
-                    android:id="@+id/btnProfile"
+                    android:id="@+id/btnMainProfile"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:backgroundTint="#00FFFFFF"
