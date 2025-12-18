@@ -12,6 +12,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CupidDating">
         <activity
+            android:name=".ItemMatchesCard"
+            android:exported="false" />
+        <activity
+            android:name=".MatchesPageActivity"
+            android:exported="false" />
+        <activity
             android:name=".ProfileDetails"
             android:exported="true" />
         <activity

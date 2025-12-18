@@ -108,33 +108,21 @@
             android:gravity="center"
             android:orientation="horizontal">
 
-            <ImageButton
-                android:id="@+id/signUp_Facebook"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:backgroundTint="@null"
-                android:scaleType="fitCenter"
-                app:srcCompat="@drawable/facebooklogo" />
-
-            <ImageButton
-                android:id="@+id/signUp_Google"
-                android:layout_width="50dp"
+            <Button
+                android:id="@+id/btn_googleLogin2"
+                android:layout_width="300dp"
                 android:layout_height="50dp"
-                android:layout_marginHorizontal="30dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:backgroundTint="@null"
-                android:scaleType="fitCenter"
-                app:srcCompat="@drawable/googlelogo" />
-
-            <ImageButton
-                android:id="@+id/signUp_Apple"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:backgroundTint="@null"
-                android:scaleType="fitCenter"
-                app:srcCompat="@drawable/applelogo" />
+                android:layout_weight="1"
+                android:backgroundTint="#FFFFFF"
+                android:text="Log in with Google"
+                android:textColor="#000000"
+                app:cornerRadius="10dp"
+                app:icon="@drawable/googlelogo"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp"
+                app:iconTint="@null"
+                app:strokeColor="#E94057"
+                app:strokeWidth="1dp" />
         </LinearLayout>
 
     </LinearLayout>

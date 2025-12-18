@@ -25,7 +25,6 @@ class registerPage : AppCompatActivity() {
         val edt_signUpEmail : EditText = findViewById(R.id.edt_signUpEmail)
         val edt_signUpPass : EditText = findViewById(R.id.edt_signUpPass)
         val btn_signUp : Button = findViewById(R.id.btn_signUp)
-        val signUp_Google : ImageView = findViewById(R.id.signUp_Google)
         val btn_isLogin : Button = findViewById(R.id.btn_isLogin)
 
         // Start connection for firestore and authentication

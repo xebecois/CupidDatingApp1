@@ -78,11 +78,11 @@
             android:text="Log in with Google"
             android:textColor="#000000"
             app:cornerRadius="10dp"
-            app:icon="@drawable/google_icon"
+            app:icon="@drawable/googlelogo"
             app:iconGravity="textStart"
             app:iconPadding="10dp"
             app:iconTint="@null"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#E94057"
             app:strokeWidth="1dp" />
 
     </LinearLayout>

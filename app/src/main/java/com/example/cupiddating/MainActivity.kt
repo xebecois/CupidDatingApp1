@@ -14,6 +14,8 @@ import androidx.viewpager2.widget.ViewPager2
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
+import android.content.Intent
+import android.widget.ImageButton
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,6 +37,13 @@ class MainActivity : AppCompatActivity() {
 
         // 3. Initialize Firebase
         val db = FirebaseFirestore.getInstance()
+
+
+        val btnMatches : ImageButton = findViewById(R.id.btnMatches)
+        btnMatches.setOnClickListener {
+            val intent = Intent(this, MatchesPageActivity::class.java)
+            startActivity(intent)
+        }
 
         // 4. Fetch Data from 'tbl_users'
         db.collection("tbl_users").get()
