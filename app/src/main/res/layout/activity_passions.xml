@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    tools:context=".Passions">
+
+    <LinearLayout
+        android:id="@+id/LL_passionsPageContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="45dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:id="@+id/LL1_passionsPage_topNav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="10dp">
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/CV_undoPassions"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                app:cardBackgroundColor="@android:color/white"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="3dp">
+
+                <ImageButton
+                    android:id="@+id/btnUndo_passions"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent"
+                    android:padding="15dp"
+                    android:scaleType="fitCenter"
+                    app:srcCompat="@drawable/red_undo" />
+            </androidx.cardview.widget.CardView>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btnSkip_passions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:text="Skip"
+                android:textColor="#E94057"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/LL_passionChoices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/TV_passionH1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="Your interests"
+                    android:textColor="#000000"
+                    android:textSize="34sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/TV_passionSH1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="30dp"
+                    android:text="Select a few of your interests and let everyone know what you're passionate about."
+                    android:textColor="#80000000"
+                    android:textSize="16sp" />
+
+                <GridLayout
+                    android:id="@+id/GL_passionChoices"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="2"
+                    android:useDefaultMargins="false">
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionPhotography"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/photography_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Photography"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionShopping"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/shopping_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Shopping"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionKaraoke"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/karaoke_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Karaoke"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionYoga"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/yoga_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Yoga"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionCooking"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/cooking_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Cooking"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionTennis"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/tennis_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Tennis"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionRunning"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/running_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Running"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionCycling"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/cycling_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Cycling"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionSwimming"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/swimming_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Swimming"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionHiking"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/hiking_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Hiking"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionArt"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/art_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Art"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionTraveling"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/traveling_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Traveling"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionExtreme"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/extreme_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Extreme"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionMusic"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/music_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Music"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionDrink"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginEnd="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/drink_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Drink"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatCheckBox
+                        android:id="@+id/btn_passionVideoGames"
+                        android:layout_width="0dp"
+                        android:layout_height="55dp"
+                        android:layout_columnWeight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/selector_passion_bg"
+                        android:button="@null"
+                        android:drawableStart="@drawable/video_games_red"
+                        android:drawablePadding="10dp"
+                        android:drawableTint="@color/selector_passion_icon"
+                        android:paddingStart="16dp"
+                        android:text="Video games"
+                        android:textColor="@color/selector_passion_text"
+                        android:textStyle="bold" />
+
+                </GridLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="20dp" />
+            </LinearLayout>
+        </ScrollView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnContinuePassions"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:backgroundTint="#E94057"
+            android:text="Continue"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:cornerRadius="16dp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

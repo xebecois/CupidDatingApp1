@@ -39,9 +39,9 @@ class MainActivity : AppCompatActivity() {
         val db = FirebaseFirestore.getInstance()
 
 
-        val btnMatches : ImageButton = findViewById(R.id.btnMatches)
-        btnMatches.setOnClickListener {
-            val intent = Intent(this, MatchesPageActivity::class.java)
+        val btnMainMatches : ImageButton = findViewById(R.id.btnMainMatches)
+        btnMainMatches.setOnClickListener {
+            val intent = Intent(this, MatchesPage::class.java)
             startActivity(intent)
         }
 

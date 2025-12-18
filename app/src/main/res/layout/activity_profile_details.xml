@@ -12,24 +12,26 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="40dp">
-
-        <TextView
-            android:id="@+id/TV_PFP_H1"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="30dp"
-            android:text="Profile details"
-            android:textColor="#000000"
-            android:textSize="40sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+        android:paddingLeft="40dp"
+        android:paddingRight="40dp"
+        android:paddingBottom="40dp"> <TextView
+        android:id="@+id/TV_PFP_H1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="60dp"
+        android:text="Profile details"
+        android:textColor="#000000"
+        android:textSize="40sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:id="@+id/btnSkip_pfpDetails"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_marginTop="20dp"
             android:clickable="true"
             android:focusable="true"
             android:padding="8dp"
@@ -60,13 +62,14 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:shapeAppearanceOverlay="@style/CircleImageView"
-                tools:src="@drawable/capybara" />
+                android:src="@drawable/capybara" />
 
             <ImageButton
                 android:id="@+id/btn_change_photo"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@drawable/bg_camera_circle"
+                android:foreground="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Change Profile Photo"
                 android:padding="8dp"
                 android:scaleType="centerInside"
@@ -188,10 +191,10 @@
                         android:id="@+id/edt_pfpBirthday"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:clickable="true"
                         android:focusable="false"
-                        android:inputType="date"
+                        android:inputType="none"
                         android:paddingStart="45dp"
-                        android:text="mm/dd/yyyy"
                         android:textColor="#000000" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -217,7 +220,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:focusable="false"
-                        android:inputType="none"
+                        android:inputType="text"
                         android:paddingStart="45dp"
                         android:textColor="#000000" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -228,7 +231,7 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="30dp"
+                android:layout_marginBottom="16dp"
                 android:hint="Bio"
                 app:boxCornerRadiusBottomEnd="16dp"
                 app:boxCornerRadiusBottomStart="16dp"
@@ -247,19 +250,94 @@
                     android:textColor="#000000" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/TIL_interestedIn"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="Interested In"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxStrokeColor="#E94057"
+                app:hintTextColor="#E94057"
+                app:startIconDrawable="@drawable/interested_in_red"
+                app:startIconTint="#E94057">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/edt_pfpInterestedIn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:paddingStart="45dp"
+                    android:textColor="#000000" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/TIL_ageRange"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="Age Range (&quot;start-end&quot;)"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxStrokeColor="#E94057"
+                app:hintTextColor="#E94057"
+                app:startIconDrawable="@drawable/age_range_red"
+                app:startIconTint="#E94057">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/edt_pfpAgeRange"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:paddingStart="45dp"
+                    android:textColor="#000000" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/TIL_distance"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="30dp"
+                android:hint="Distance (km)"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxStrokeColor="#E94057"
+                app:hintTextColor="#E94057"
+                app:startIconDrawable="@drawable/distance_red"
+                app:startIconTint="#E94057">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/edt_pfpDistance"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="numberDecimal"
+                    android:paddingStart="45dp"
+                    android:textColor="#000000" />
+            </com.google.android.material.textfield.TextInputLayout>
+
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnConfirm_pfpDetails"
             android:layout_width="match_parent"
             android:layout_height="60dp"
+            android:layout_marginTop="10dp"
             android:backgroundTint="#E94057"
             android:text="Confirm"
             android:textAllCaps="false"
             android:textSize="18sp"
             android:textStyle="bold"
             app:cornerRadius="16dp"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/LL_phpFormContainer"
             tools:layout_editor_absoluteX="40dp" />
 

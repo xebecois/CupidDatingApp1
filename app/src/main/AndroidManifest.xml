@@ -13,10 +13,13 @@
         android:theme="@style/Theme.CupidDating">
         <activity
             android:name=".ItemMatchesCard"
-            android:exported="false" />
+            android:exported="true" />
         <activity
-            android:name=".MatchesPageActivity"
-            android:exported="false" />
+            android:name=".MatchesPage"
+            android:exported="true" />
+        <activity
+            android:name=".Passions"
+            android:exported="true" />
         <activity
             android:name=".ProfileDetails"
             android:exported="true" />
@@ -24,7 +27,7 @@
             android:name=".ItemUserCard"
             android:exported="true" />
         <activity
-            android:name=".registerPage"
+            android:name=".SignUpPage"
             android:exported="true" />
         <activity
             android:name=".LoginPage"

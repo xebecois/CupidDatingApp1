@@ -5,7 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".registerPage">
+    tools:context=".SignUpPage">
 
     <LinearLayout
         android:id="@+id/LL_signUpPage"
@@ -103,7 +103,7 @@
 
         <LinearLayout
             android:id="@+id/LL_signUpSocmeds"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:orientation="horizontal">
@@ -114,7 +114,7 @@
                 android:layout_height="50dp"
                 android:layout_weight="1"
                 android:backgroundTint="#FFFFFF"
-                android:text="Log in with Google"
+                android:text="Continue with Google"
                 android:textColor="#000000"
                 app:cornerRadius="10dp"
                 app:icon="@drawable/googlelogo"
