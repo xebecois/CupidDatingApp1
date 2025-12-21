@@ -29,7 +29,24 @@ class MainActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
+
         }
+
+
+
+        //FILTERBUTTON
+        // 1. Find the button using the ID from your XML
+        val btnFilter = findViewById<ImageButton>(R.id.btnFilter)
+        // 2. Set the click listener
+        btnFilter.setOnClickListener {
+            // 3. Create an instance of your new Fragment class
+            val filterSheet = FilterBottomSheet()
+
+            // 4. Show it
+            filterSheet.show(supportFragmentManager, "FilterBottomSheet")
+        }
+
+
 
         // 2. Find the container where we will stack the cards
         // Note: Ensure your LinearLayout in activity_main.xml has id: ll_mainContainer
@@ -140,4 +157,5 @@ class MainActivity : AppCompatActivity() {
         // ViewHolder class
         inner class ImageViewHolder(val imageView: ImageView) : RecyclerView.ViewHolder(imageView)
     }
+
 }

@@ -25,6 +25,19 @@ class MatchesPage : AppCompatActivity() {
             insets
         }
 
+        //FITLER BUTTON
+        // 1. Find the button using the ID from your XML
+        val btnFilter = findViewById<ImageButton>(R.id.btnFilter)
+
+        // 2. Set the click listener
+        btnFilter.setOnClickListener {
+            // 3. Create an instance of your new Fragment class
+            val filterSheet = FilterBottomSheet()
+
+            // 4. Show it
+            filterSheet.show(supportFragmentManager, "FilterBottomSheet")
+        }
+
         // --- Navigation Logic ---
         val btnHome: ImageButton = findViewById(R.id.btnHome)
         btnHome.setOnClickListener {
