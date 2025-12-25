@@ -32,6 +32,6 @@ class LandingPage : AppCompatActivity() {
             // "finish()" removes this Landing Page from the back stack
             // so the user can't go back to it by pressing the back button.
             finish()
-        }, 3000) // 3000 milliseconds = 3 seconds
+        }, 5000) // 5000 milliseconds = 5 seconds
     }
 }

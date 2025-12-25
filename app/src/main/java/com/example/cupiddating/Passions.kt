@@ -12,6 +12,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 
 class Passions : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,45 +37,72 @@ class Passions : AppCompatActivity() {
 
         // 2. Setup Undo Button
         // finish() closes this activity and automatically reveals the previous one (ProfileDetails)
-        // This preserves the state of the previous form.
         btnUndo.setOnClickListener {
             finish()
         }
 
         // 3. Setup Skip Button
-        // Proceed to MainActivity without validation
+        // Proceed to MainActivity without saving specific passions (or you could save an empty list)
         btnSkip.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
-            // Use flags to clear the activity stack so they can't go back to onboarding
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
-            finish()
+            goToMainActivity()
         }
 
         // 4. Setup Continue Button
-        // Requires at least one selection
         btnContinue.setOnClickListener {
-            if (isAnyPassionSelected(gridLayout)) {
-                val intent = Intent(this, MainActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                finish()
+            // Collect selected items
+            val selectedPassions = getSelectedPassions(gridLayout)
+
+            if (selectedPassions.isNotEmpty()) {
+                // Save to Firebase
+                savePassionsToFirebase(selectedPassions)
             } else {
                 Toast.makeText(this, "Select at least one passion or press skip", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Helper function to check if any checkbox inside the GridLayout is checked
-    private fun isAnyPassionSelected(gridLayout: GridLayout): Boolean {
-        // Iterate through all children of the GridLayout
+    // --- Helper: Iterate through Grid to get selected text ---
+    private fun getSelectedPassions(gridLayout: GridLayout): List<String> {
+        val selectionList = mutableListOf<String>()
+
+        // Loop through all children of the GridLayout
         for (i in 0 until gridLayout.childCount) {
             val view = gridLayout.getChildAt(i)
-            // Check if the view is a CheckBox (or AppCompatCheckBox) and is checked
+            // Check if the view is a CheckBox and is checked
             if (view is CheckBox && view.isChecked) {
-                return true
+                selectionList.add(view.text.toString())
             }
         }
-        return false
+        return selectionList
+    }
+
+    // --- Helper: Save to Firestore ---
+    private fun savePassionsToFirebase(passions: List<String>) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db = FirebaseFirestore.getInstance()
+
+        val data = mapOf(
+            "passions" to passions
+        )
+
+        // Use SetOptions.merge() to update the existing user document without overwriting other fields
+        db.collection("tbl_users").document(userId)
+            .set(data, SetOptions.merge())
+            .addOnSuccessListener {
+                Toast.makeText(this, "Interests saved!", Toast.LENGTH_SHORT).show()
+                goToMainActivity()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Error saving: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // --- Helper: Navigation ---
+    private fun goToMainActivity() {
+        val intent = Intent(this, MainActivity::class.java)
+        // Clear the back stack so the user cannot press "Back" to return to the Onboarding screens
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
     }
 }

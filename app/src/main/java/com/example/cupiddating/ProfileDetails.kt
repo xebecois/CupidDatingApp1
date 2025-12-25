@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.text.InputFilter
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,8 +18,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import java.util.Calendar
 import com.google.firebase.firestore.SetOptions
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 class ProfileDetails : AppCompatActivity() {
 
@@ -76,6 +75,9 @@ class ProfileDetails : AppCompatActivity() {
         edtAgeRange = findViewById(R.id.edt_pfpAgeRange)
         edtDistance = findViewById(R.id.edt_pfpDistance)
         btnConfirm = findViewById(R.id.btnConfirm_pfpDetails)
+
+        // --- NEW: Limit Mobile No. to 12 characters ---
+        edtMobile.filters = arrayOf(InputFilter.LengthFilter(12))
 
         // 3. Setup Action Listeners
         setupImagePicker()
@@ -154,7 +156,7 @@ class ProfileDetails : AppCompatActivity() {
             isValid = false
         }
 
-        // Check Text Fields (Set error if empty)
+        // Check Text Fields
         if (edtName.text.isNullOrEmpty()) {
             edtName.error = "Name is required"
             isValid = false
@@ -168,7 +170,6 @@ class ProfileDetails : AppCompatActivity() {
             isValid = false
         }
         if (edtBirthday.text.isNullOrEmpty() || edtBirthday.text.toString() == "mm/dd/yyyy") {
-            // Check if still default or empty
             if(edtBirthday.text.toString() == "mm/dd/yyyy") {
                 Toast.makeText(this, "Please select your birthday", Toast.LENGTH_SHORT).show()
             } else {
@@ -177,7 +178,6 @@ class ProfileDetails : AppCompatActivity() {
             isValid = false
         }
         if (edtGender.text.isNullOrEmpty()) {
-            // Since focusing is disabled, error icon might not show well, so we use Toast fallback if needed
             Toast.makeText(this, "Please select your gender", Toast.LENGTH_SHORT).show()
             isValid = false
         }
@@ -200,35 +200,21 @@ class ProfileDetails : AppCompatActivity() {
 
         return isValid
     }
-    private fun calculateAge(birthday: String): Int {
-        return try {
-            val sdf = SimpleDateFormat("M/d/yyyy", Locale.US)
-            val birthDate = sdf.parse(birthday)
-            val dob = Calendar.getInstance()
-            if (birthDate != null) {
-                dob.time = birthDate
-            }
 
-            val today = Calendar.getInstance()
-            var age = today.get(Calendar.YEAR) - dob.get(Calendar.YEAR)
-
-            // Adjust if birthday hasn't happened yet this year
-            if (today.get(Calendar.DAY_OF_YEAR) < dob.get(Calendar.DAY_OF_YEAR)) {
-                age--
-            }
-            age
-        } catch (e: Exception) {
-            0 // Return 0 if parsing fails
-        }
-    }
     private fun saveProfileToFirestore() {
-
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
 
-        val birthdayText = edtBirthday.text.toString()
-        val userAge = calculateAge(birthdayText)
+        // --- UPDATED: Convert to Int (Integer) ---
+        val distanceVal = edtDistance.text.toString().toIntOrNull() ?: 0
 
+        // Create the "preferences" map
+        val preferencesMap = mapOf(
+            "age_range" to edtAgeRange.text.toString(),
+            "distance" to distanceVal                   // Saved as Integer
+        )
+
+        // Create the main profile map
         val profileUpdates = mapOf(
             "name" to edtName.text.toString(),
             "mobile" to edtMobile.text.toString(),
@@ -237,30 +223,33 @@ class ProfileDetails : AppCompatActivity() {
             "gender" to edtGender.text.toString(),
             "bio" to edtBio.text.toString(),
             "interested_in" to edtInterestedIn.text.toString(),
-            "age" to userAge,
+            "preferences" to preferencesMap, // Nested Map
+            "match_percent" to 0,
+            "images" to emptyList<String>(),
             "profileCompleted" to true
         )
 
-        // Use set with Merge so we don't overwrite the email/role from SignUp
+        // Save to Firestore with Merge
         db.collection("tbl_users").document(userId).set(profileUpdates, SetOptions.merge())
             .addOnSuccessListener {
+                Toast.makeText(this, "Profile Saved", Toast.LENGTH_SHORT).show()
                 val intent = Intent(this, Passions::class.java)
                 startActivity(intent)
                 finish()
             }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Error saving profile: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
+
     private fun setupNavigation() {
         btnConfirm.setOnClickListener {
             if (validateInputs()) {
-                // Call the save function instead of just starting an intent
                 saveProfileToFirestore()
             } else {
                 Toast.makeText(this, "Please fill all required fields", Toast.LENGTH_SHORT).show()
             }
         }
     }
-
-
-
-
 }
+

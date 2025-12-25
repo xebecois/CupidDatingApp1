@@ -1,161 +1,152 @@
 package com.example.cupiddating
 
+import android.content.Intent
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.ImageView
+import android.util.Log
+import android.view.animation.AccelerateInterpolator
+import android.widget.ImageButton
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.viewpager2.widget.ViewPager2
-import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
-import android.content.Intent
-import android.widget.ImageButton
+import com.yuyakaido.android.cardstackview.*
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), CardStackListener {
+
+    private lateinit var cardStackView: CardStackView
+    private lateinit var manager: CardStackLayoutManager
+    private lateinit var adapter: CardStackAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        // 1. Handle Window Insets (Edge-to-Edge)
+        // 1. Handle Window Insets
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
-
         }
 
-
-
-        //FILTERBUTTON
-        // 1. Find the button using the ID from your XML
+        // 2. Setup Navigation Buttons
         val btnFilter = findViewById<ImageButton>(R.id.btnFilter)
-        // 2. Set the click listener
         btnFilter.setOnClickListener {
-            // 3. Create an instance of your new Fragment class
             val filterSheet = FilterBottomSheet()
-
-            // 4. Show it
             filterSheet.show(supportFragmentManager, "FilterBottomSheet")
         }
 
-
-
-        // 2. Find the container where we will stack the cards
-        // Note: Ensure your LinearLayout in activity_main.xml has id: ll_mainContainer
-        val mainContainer = findViewById<LinearLayout>(R.id.LL_mainPageInflater)
-
-        // 3. Initialize Firebase
-        val db = FirebaseFirestore.getInstance()
-
-
-        val btnMainMatches : ImageButton = findViewById(R.id.btnMainMatches)
+        val btnMainMatches: ImageButton = findViewById(R.id.btnMainMatches)
         btnMainMatches.setOnClickListener {
             val intent = Intent(this, MatchesPage::class.java)
             startActivity(intent)
         }
 
-        // 4. Fetch Data from 'tbl_users'
+        // 3. INITIALIZE CARD STACK VIEW
+        cardStackView = findViewById(R.id.cardStackView)
+
+        // This manager controls the swipe physics
+        manager = CardStackLayoutManager(this, this)
+        manager.setStackFrom(StackFrom.None)
+        manager.setVisibleCount(3) // Show 3 cards behind the top one
+        manager.setTranslationInterval(8.0f)
+        manager.setScaleInterval(0.95f)
+        manager.setSwipeThreshold(0.3f)
+        manager.setMaxDegree(20.0f)
+        manager.setDirections(Direction.HORIZONTAL) // Allow Left/Right only
+        manager.setCanScrollHorizontal(true)
+        manager.setCanScrollVertical(false)
+
+        cardStackView.layoutManager = manager
+        adapter = CardStackAdapter()
+        cardStackView.adapter = adapter
+
+        // 4. SETUP ACTION BUTTONS (Pass / Like)
+        setupButtons()
+
+        // 5. FETCH DATA
+        fetchUsersFromFirebase()
+    }
+
+    private fun setupButtons() {
+        val btnPass = findViewById<ImageButton>(R.id.btn_pass)
+        val btnLike = findViewById<ImageButton>(R.id.btn_like)
+
+        btnPass.setOnClickListener {
+            // Setup animation for Left Swipe (Pass)
+            val setting = SwipeAnimationSetting.Builder()
+                .setDirection(Direction.Left)
+                .setDuration(Duration.Normal.duration)
+                .setInterpolator(AccelerateInterpolator())
+                .build()
+            manager.setSwipeAnimationSetting(setting)
+            cardStackView.swipe() // Triggers the swipe programmatically
+        }
+
+        btnLike.setOnClickListener {
+            // Setup animation for Right Swipe (Like)
+            val setting = SwipeAnimationSetting.Builder()
+                .setDirection(Direction.Right)
+                .setDuration(Duration.Normal.duration)
+                .setInterpolator(AccelerateInterpolator())
+                .build()
+            manager.setSwipeAnimationSetting(setting)
+            cardStackView.swipe() // Triggers the swipe programmatically
+        }
+    }
+
+    private fun fetchUsersFromFirebase() {
+        val db = FirebaseFirestore.getInstance()
         db.collection("tbl_users").get()
             .addOnSuccessListener { documents ->
+                val usersList = ArrayList<DatingUser>()
 
-                // Loop through every user found in the database
                 for (document in documents) {
-
-                    // --- A. INFLATE THE TEMPLATE ---
-                    val inflater = LayoutInflater.from(this)
-                    // We use 'false' because we will add it manually with addView() later
-                    val cardView = inflater.inflate(R.layout.activity_item_user_card, mainContainer, false)
-
-                    // --- B. FIND VIEWS INSIDE THE CARD ---
-                    val tvNameAge = cardView.findViewById<TextView>(R.id.tv_userNameAge)
-                    val tvJob = cardView.findViewById<TextView>(R.id.tv_userJob)
-                    val tvMatch = cardView.findViewById<TextView>(R.id.tv_matchPercent)
-                    val viewPager = cardView.findViewById<ViewPager2>(R.id.vp_imageSlider)
-
-                    // --- C. GET DATA FROM FIRESTORE ---
-                    // Make sure these field names match your Firebase exactly!
                     val name = document.getString("name") ?: "Unknown"
                     val age = document.getLong("age") ?: 18
                     val job = document.getString("job") ?: "No Job Listed"
                     val matchScore = document.getLong("match_percent") ?: 50
-
-                    // Get the array of image URLs
-                    // In Firebase, this should be an Array/List of Strings
                     val imagesList = document.get("images") as? List<String> ?: emptyList()
 
-                    // --- D. POPULATE THE VIEW ---
-                    tvNameAge.text = "$name, $age"
-                    tvJob.text = job
-                    tvMatch.text = "$matchScore% Match"
-
-                    // --- E. SETUP IMAGE SLIDER (ViewPager2) ---
-                    // We connect the adapter to handle the swiping images
-                    if (imagesList.isNotEmpty()) {
-                        val adapter = ImageSliderAdapter(imagesList)
-                        viewPager.adapter = adapter
-                    }
-
-                    // --- FIX: PREVENT PAGE SCROLLING WHEN SWIPING IMAGES ---
-                    // This tells the main ScrollView to stop moving when you touch the slider
-                    viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                        override fun onPageScrollStateChanged(state: Int) {
-                            super.onPageScrollStateChanged(state)
-                            // If the user is dragging the image, disable the main vertical scroll
-                            val shouldDisableScroll = (state == ViewPager2.SCROLL_STATE_DRAGGING)
-                            viewPager.parent.requestDisallowInterceptTouchEvent(shouldDisableScroll)
-                        }
-                    })
-
-                    // --- F. ADD TO MAIN LAYOUT ---
-                    mainContainer.addView(cardView)
+                    // Add to list
+                    usersList.add(DatingUser(name, age, job, matchScore, imagesList))
                 }
+
+                // Update the adapter
+                adapter.setUsers(usersList)
             }
             .addOnFailureListener { exception ->
-                // Handle error (optional: Log it)
                 exception.printStackTrace()
             }
     }
 
-    // --- INNER CLASS: ADAPTER FOR IMAGE SLIDER ---
-    // This class handles the logic for swiping images inside the card
-    inner class ImageSliderAdapter(private val imageUrls: List<String>) :
-        RecyclerView.Adapter<ImageSliderAdapter.ImageViewHolder>() {
+    // --- CardStackListener Required Methods ---
+    override fun onCardSwiped(direction: Direction?) {
+        // This calculates the index of the card that was JUST swiped
+        // (topPosition points to the NEXT card, so we subtract 1)
+        val position = manager.topPosition - 1
 
-//        inner class ImageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-//            val imageView: ImageView = itemView.findViewById(R.id.iv_sliderImage)
-//        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
-            // We need a simple layout for the image item itself.
-            // Since we don't have one, we create an ImageView programmatically here.
-            val imageView = ImageView(parent.context)
-            imageView.layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
-            return ImageViewHolder(imageView)
+        // Safety check to prevent crashing if the list is empty
+        if (position >= 0 && position < adapter.itemCount) {
+            // If you want to show the specific name (Optional)
+            // You would need to make your 'users' list in the adapter public or accessible
+            // For now, we will just use a generic message as requested.
         }
 
-        override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-            // Use Glide to load the URL into the ImageView
-            Glide.with(holder.itemView.context)
-                .load(imageUrls[position])
-                .into(holder.imageView)
+        if (direction == Direction.Left) {
+            android.widget.Toast.makeText(this, "Pass", android.widget.Toast.LENGTH_SHORT).show()
+            Log.d("CardStack", "User Passed (Swiped Left)")
+
+        } else if (direction == Direction.Right) {
+            android.widget.Toast.makeText(this, "Liked!", android.widget.Toast.LENGTH_SHORT).show()
+            Log.d("CardStack", "User Liked (Swiped Right)")
         }
-
-        override fun getItemCount(): Int = imageUrls.size
-
-        // ViewHolder class
-        inner class ImageViewHolder(val imageView: ImageView) : RecyclerView.ViewHolder(imageView)
     }
 
+    override fun onCardDragging(direction: Direction?, ratio: Float) {}
+    override fun onCardRewound() {}
+    override fun onCardCanceled() {}
+    override fun onCardAppeared(view: android.view.View?, position: Int) {}
+    override fun onCardDisappeared(view: android.view.View?, position: Int) {}
 }
