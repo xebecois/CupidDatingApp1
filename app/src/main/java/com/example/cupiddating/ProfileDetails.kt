@@ -17,6 +17,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import java.util.Calendar
 import com.google.firebase.firestore.SetOptions
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class ProfileDetails : AppCompatActivity() {
 
@@ -79,6 +81,7 @@ class ProfileDetails : AppCompatActivity() {
         setupImagePicker()
         setupBirthdayPicker()
         setupGenderPicker()
+        setupInterestedPicker()
         setupNavigation()
     }
 
@@ -106,6 +109,22 @@ class ProfileDetails : AppCompatActivity() {
                 year, month, day
             )
             datePickerDialog.show()
+        }
+    }
+
+    private fun setupInterestedPicker() {
+        edtInterestedIn.setOnClickListener { view ->
+            val popup = PopupMenu(this, view)
+            popup.menu.add("Male")
+            popup.menu.add("Female")
+            popup.menu.add("Non-binary")
+            popup.menu.add("Prefer not to say")
+
+            popup.setOnMenuItemClickListener { item ->
+                edtInterestedIn.setText(item.title)
+                true
+            }
+            popup.show()
         }
     }
 
@@ -181,10 +200,34 @@ class ProfileDetails : AppCompatActivity() {
 
         return isValid
     }
+    private fun calculateAge(birthday: String): Int {
+        return try {
+            val sdf = SimpleDateFormat("M/d/yyyy", Locale.US)
+            val birthDate = sdf.parse(birthday)
+            val dob = Calendar.getInstance()
+            if (birthDate != null) {
+                dob.time = birthDate
+            }
 
+            val today = Calendar.getInstance()
+            var age = today.get(Calendar.YEAR) - dob.get(Calendar.YEAR)
+
+            // Adjust if birthday hasn't happened yet this year
+            if (today.get(Calendar.DAY_OF_YEAR) < dob.get(Calendar.DAY_OF_YEAR)) {
+                age--
+            }
+            age
+        } catch (e: Exception) {
+            0 // Return 0 if parsing fails
+        }
+    }
     private fun saveProfileToFirestore() {
+
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
+
+        val birthdayText = edtBirthday.text.toString()
+        val userAge = calculateAge(birthdayText)
 
         val profileUpdates = mapOf(
             "name" to edtName.text.toString(),
@@ -193,6 +236,8 @@ class ProfileDetails : AppCompatActivity() {
             "birthday" to edtBirthday.text.toString(),
             "gender" to edtGender.text.toString(),
             "bio" to edtBio.text.toString(),
+            "interested_in" to edtInterestedIn.text.toString(),
+            "age" to userAge,
             "profileCompleted" to true
         )
 
@@ -214,4 +259,8 @@ class ProfileDetails : AppCompatActivity() {
             }
         }
     }
+
+
+
+
 }
