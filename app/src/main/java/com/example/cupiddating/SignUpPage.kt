@@ -71,11 +71,11 @@ class SignUpPage : AppCompatActivity() {
                         val user = auth.currentUser
                         val userId = user!!.uid
 
-                        // Prepare data for Firestore
+                        // Prepare data for FirestoreQ
                         val userData = mapOf(
                             "name" to (user.displayName ?: "No Name"),
                             "email" to (user.email ?: ""),
-                            "profileCompleted" to false // Important flag for navigation logic
+                            "profile_completed" to false // Important flag for navigation logic
                         )
 
                         // Save to Firestore
@@ -122,7 +122,7 @@ class SignUpPage : AppCompatActivity() {
                     // Create basic user map
                     val userData = mapOf(
                         "email" to email,
-                        "profileCompleted" to false, // Set false so they are forced to setup profile
+                        "profile_completed" to false, // Set false so they are forced to setup profile
                         "role" to "user"
                     )
 

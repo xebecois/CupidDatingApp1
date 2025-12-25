@@ -31,32 +31,25 @@ class Passions : AppCompatActivity() {
 
         // 1. Initialize Views
         val btnUndo: ImageButton = findViewById(R.id.btnUndo_passions)
-        val btnSkip: TextView = findViewById(R.id.btnSkip_passions)
         val btnContinue: MaterialButton = findViewById(R.id.btnContinuePassions)
         val gridLayout: GridLayout = findViewById(R.id.GL_passionChoices)
 
         // 2. Setup Undo Button
-        // finish() closes this activity and automatically reveals the previous one (ProfileDetails)
+        // finish() closes this activity and automatically returns to the previous one (ProfileDetails)
         btnUndo.setOnClickListener {
             finish()
         }
 
-        // 3. Setup Skip Button
-        // Proceed to MainActivity without saving specific passions (or you could save an empty list)
-        btnSkip.setOnClickListener {
-            goToMainActivity()
-        }
-
-        // 4. Setup Continue Button
+        // 3. Setup Continue Button
         btnContinue.setOnClickListener {
-            // Collect selected items
+            // Collect selected items from the Grid
             val selectedPassions = getSelectedPassions(gridLayout)
 
             if (selectedPassions.isNotEmpty()) {
-                // Save to Firebase
-                savePassionsToFirebase(selectedPassions)
+                // Save passions and mark profile as complete
+                finalizeProfile(selectedPassions)
             } else {
-                Toast.makeText(this, "Select at least one passion or press skip", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Select at least one hobby/interest.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -68,7 +61,7 @@ class Passions : AppCompatActivity() {
         // Loop through all children of the GridLayout
         for (i in 0 until gridLayout.childCount) {
             val view = gridLayout.getChildAt(i)
-            // Check if the view is a CheckBox and is checked
+            // Check if the view is a CheckBox (or AppCompatCheckBox) and is checked
             if (view is CheckBox && view.isChecked) {
                 selectionList.add(view.text.toString())
             }
@@ -76,20 +69,25 @@ class Passions : AppCompatActivity() {
         return selectionList
     }
 
-    // --- Helper: Save to Firestore ---
-    private fun savePassionsToFirebase(passions: List<String>) {
+    // --- Helper: Save to Firestore & Finalize ---
+    private fun finalizeProfile(passions: List<String>) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
 
+        // Prepare the data to update
+        // We add the passions array AND set profile_completed to true
         val data = mapOf(
-            "passions" to passions
+            "passions" to passions,
+            "profile_completed" to true
         )
 
         // Use SetOptions.merge() to update the existing user document without overwriting other fields
         db.collection("tbl_users").document(userId)
             .set(data, SetOptions.merge())
             .addOnSuccessListener {
-                Toast.makeText(this, "Interests saved!", Toast.LENGTH_SHORT).show()
+                if (passions.isNotEmpty()) {
+                    Toast.makeText(this, "Profile saved!", Toast.LENGTH_SHORT).show()
+                }
                 goToMainActivity()
             }
             .addOnFailureListener { e ->

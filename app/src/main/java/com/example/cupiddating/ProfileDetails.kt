@@ -205,13 +205,12 @@ class ProfileDetails : AppCompatActivity() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
 
-        // --- UPDATED: Convert to Int (Integer) ---
         val distanceVal = edtDistance.text.toString().toIntOrNull() ?: 0
 
         // Create the "preferences" map
         val preferencesMap = mapOf(
             "age_range" to edtAgeRange.text.toString(),
-            "distance" to distanceVal                   // Saved as Integer
+            "distance" to distanceVal   // Saved as Integer
         )
 
         // Create the main profile map
@@ -223,19 +222,17 @@ class ProfileDetails : AppCompatActivity() {
             "gender" to edtGender.text.toString(),
             "bio" to edtBio.text.toString(),
             "interested_in" to edtInterestedIn.text.toString(),
-            "preferences" to preferencesMap, // Nested Map
+            "preferences" to preferencesMap,
             "match_percent" to 0,
             "images" to emptyList<String>(),
-            "profileCompleted" to true
+            "profile_completed" to false
         )
 
         // Save to Firestore with Merge
         db.collection("tbl_users").document(userId).set(profileUpdates, SetOptions.merge())
             .addOnSuccessListener {
-                Toast.makeText(this, "Profile Saved", Toast.LENGTH_SHORT).show()
                 val intent = Intent(this, Passions::class.java)
                 startActivity(intent)
-                finish()
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Error saving profile: ${e.message}", Toast.LENGTH_SHORT).show()
