@@ -15,6 +15,7 @@
         android:orientation="vertical"
         android:paddingHorizontal="45dp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -90,7 +91,7 @@
                     android:layout_marginBottom="30dp"
                     android:text="Select a few of your interests and let everyone know what you're passionate about."
                     android:textColor="#80000000"
-                    android:textSize="16sp" />
+                    android:textSize="14sp" />
 
                 <GridLayout
                     android:id="@+id/GL_passionChoices"

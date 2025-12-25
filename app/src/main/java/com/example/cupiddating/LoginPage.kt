@@ -16,6 +16,21 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginPage : AppCompatActivity() {
+    private fun checkProfileStatus(userId: String) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("tbl_users").document(userId).get()
+            .addOnSuccessListener { document ->
+                val completed = document.getBoolean("profileCompleted") ?: false
+
+                if (completed) {
+                    startActivity(Intent(this, MainActivity::class.java))
+                } else {
+                    startActivity(Intent(this, ProfileDetails::class.java))
+                }
+                finish()
+            }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -24,6 +39,7 @@ class LoginPage : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
+
         }
         // widget variables
         val edt_loginEmail : EditText = findViewById(R.id.edt_loginEmail)
@@ -70,13 +86,13 @@ class LoginPage : AppCompatActivity() {
 
                         val values = mapOf(
                             "name" to name,
-                            "email" to email
+                            "email" to email,
+                            "profileCompleted" to false
                         )
 
-                        con.collection("reg_tbl_users").document(userid).set(values)
+                        con.collection("tbl_users").document(userid).set(values)
                             .addOnSuccessListener{
                                 Toast.makeText(this, "Login Successful",Toast.LENGTH_SHORT).show()
-
                                 val intent = Intent(this, MainActivity::class.java)
                                 startActivity(intent)
                             }
@@ -95,31 +111,45 @@ class LoginPage : AppCompatActivity() {
 
         // Email and Password Login
         btn_emailLogin.setOnClickListener {
-            //user input
             val email = edt_loginEmail.text.toString()
             val password = edt_loginPass.text.toString()
 
-            //connected to database
-            auth.signInWithEmailAndPassword(email, password)
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please enter credentials", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
 
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Log in successful", Toast.LENGTH_SHORT).show()
+            auth.signInWithEmailAndPassword(email, password).addOnSuccessListener {
+                val userId = auth.currentUser?.uid
+                if (userId != null) {
+                    // Look up the user in Firestore to see if they finished their profile
+                    val db = FirebaseFirestore.getInstance()
+                    db.collection("tbl_users").document(userId).get()
+                        .addOnSuccessListener { document ->
+                            val isComplete = document.getBoolean("profileCompleted") ?: false
 
-                    //transfer to other page
-                    val intent = Intent(this, MainActivity::class.java)
-                    startActivity(intent)
+                            if (isComplete) {
+                                // RETURNING USER: Go straight to Home
+                                val intent = Intent(this, MainActivity::class.java)
+                                startActivity(intent)
+                            } else {
+                                // NEW/INCOMPLETE USER: Go to Setup
+                                val intent = Intent(this, ProfileDetails::class.java)
+                                startActivity(intent)
+                            }
+                            finish()
+                        }
+                        .addOnFailureListener {
+                            // If check fails, default to ProfileDetails to be safe
+                            startActivity(Intent(this, ProfileDetails::class.java))
+                            finish()
+                        }
                 }
-
-                .addOnFailureListener {
-                        e ->
-                    Toast.makeText(this, "Log in failed" + e.message, Toast.LENGTH_SHORT).show()
-                }
+            }
         }
-
         btn_isSignUp.setOnClickListener {
             val intent = Intent(this, SignUpPage::class.java)
             startActivity(intent)
         }
-
     }
 }

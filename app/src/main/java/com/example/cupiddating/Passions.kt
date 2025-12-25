@@ -43,19 +43,22 @@ class Passions : AppCompatActivity() {
         // Proceed to MainActivity without validation
         btnSkip.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
+            // Use flags to clear the activity stack so they can't go back to onboarding
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
+            finish()
         }
 
         // 4. Setup Continue Button
         // Requires at least one selection
         btnContinue.setOnClickListener {
             if (isAnyPassionSelected(gridLayout)) {
-                // Success: Move to Main Activity
                 val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
+                finish()
             } else {
-                // Failure: Show error message
-                Toast.makeText(this, "Please select at least one interest", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Select at least one passion or press skip", Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -13,7 +13,10 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
 import java.util.Calendar
+import com.google.firebase.firestore.SetOptions
 
 class ProfileDetails : AppCompatActivity() {
 
@@ -33,7 +36,6 @@ class ProfileDetails : AppCompatActivity() {
     private lateinit var edtDistance: TextInputEditText
 
     // Buttons
-    private lateinit var btnSkip: TextView
     private lateinit var btnConfirm: MaterialButton
 
     // Flag to track if user picked a photo
@@ -71,8 +73,6 @@ class ProfileDetails : AppCompatActivity() {
         edtInterestedIn = findViewById(R.id.edt_pfpInterestedIn)
         edtAgeRange = findViewById(R.id.edt_pfpAgeRange)
         edtDistance = findViewById(R.id.edt_pfpDistance)
-
-        btnSkip = findViewById(R.id.btnSkip_pfpDetails)
         btnConfirm = findViewById(R.id.btnConfirm_pfpDetails)
 
         // 3. Setup Action Listeners
@@ -182,24 +182,35 @@ class ProfileDetails : AppCompatActivity() {
         return isValid
     }
 
-    private fun setupNavigation() {
-        // SKIP BUTTON: No validation needed
-        btnSkip.setOnClickListener {
-            Toast.makeText(this, "Skipped setup", Toast.LENGTH_SHORT).show()
-            val intent = Intent(this, Passions::class.java)
-            startActivity(intent)
-        }
+    private fun saveProfileToFirestore() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val db = FirebaseFirestore.getInstance()
 
-        // CONFIRM BUTTON: Validate first
-        btnConfirm.setOnClickListener {
-            if (validateInputs()) {
-                // All fields are good
-                Toast.makeText(this, "Details Confirmed", Toast.LENGTH_SHORT).show()
+        val profileUpdates = mapOf(
+            "name" to edtName.text.toString(),
+            "mobile" to edtMobile.text.toString(),
+            "location" to edtLocation.text.toString(),
+            "birthday" to edtBirthday.text.toString(),
+            "gender" to edtGender.text.toString(),
+            "bio" to edtBio.text.toString(),
+            "profileCompleted" to true
+        )
+
+        // Use set with Merge so we don't overwrite the email/role from SignUp
+        db.collection("tbl_users").document(userId).set(profileUpdates, SetOptions.merge())
+            .addOnSuccessListener {
                 val intent = Intent(this, Passions::class.java)
                 startActivity(intent)
+                finish()
+            }
+    }
+    private fun setupNavigation() {
+        btnConfirm.setOnClickListener {
+            if (validateInputs()) {
+                // Call the save function instead of just starting an intent
+                saveProfileToFirestore()
             } else {
-                // Validation failed
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please fill all required fields", Toast.LENGTH_SHORT).show()
             }
         }
     }

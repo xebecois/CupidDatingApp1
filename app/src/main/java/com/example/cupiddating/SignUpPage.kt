@@ -39,7 +39,6 @@ class SignUpPage : AppCompatActivity() {
 
             // Create account in db
             auth.createUserWithEmailAndPassword(email, password)
-
                 .addOnSuccessListener {
                     // User id field
                     val userid = auth.currentUser!!.uid
@@ -50,11 +49,12 @@ class SignUpPage : AppCompatActivity() {
                         "gender" to ""
                     )
                     // Firebase database connection
-                    con.collection("reg_tbl_users").document(userid).set(values)
+                    con.collection("tbl_users").document(userid).set(values)
 
                     // Transfer to other page
-                    val intent = Intent(this, MainActivity::class.java)
+                    val intent = Intent(this, ProfileDetails::class.java)
                     startActivity(intent)
+                    finish()
                 }
 
                 .addOnFailureListener {
