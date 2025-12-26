@@ -127,7 +127,6 @@ class ProfileDetails : AppCompatActivity() {
             popup.menu.add("Male")
             popup.menu.add("Female")
             popup.menu.add("Non-binary")
-            popup.menu.add("Prefer not to say")
 
             popup.setOnMenuItemClickListener { item ->
                 edtInterestedIn.setText(item.title)

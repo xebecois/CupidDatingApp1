@@ -5,17 +5,24 @@ package com.example.cupiddating
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.*
+import android.view.View
 import android.view.animation.AccelerateInterpolator
-import android.widget.*
+import android.widget.Button
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.*
-import com.google.firebase.firestore.*
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.yuyakaido.android.cardstackview.*
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Locale
 
+// 1. Add "FilterBottomSheet.FilterListener" to the class definition
 class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.FilterListener {
 
     private lateinit var cardStackView: CardStackView
@@ -33,12 +40,14 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        // ... (Window Insets code remains the same) ...
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
+        // ... (Button setup code remains the same) ...
         val btnFilter = findViewById<ImageButton>(R.id.btnFilter)
         btnFilter.setOnClickListener {
             val filterSheet = FilterBottomSheet()
@@ -48,23 +57,19 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         val btnMainMatches: ImageButton = findViewById(R.id.btnMainMatches)
         btnMainMatches.setOnClickListener {
             val intent = Intent(this, MatchesPage::class.java)
-            // This flag brings the existing MatchesPage to front if it exists, preserving its state
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         }
 
-        // CardStackView Setup
+        // ... (CardStackView setup remains the same) ...
         cardStackView = findViewById(R.id.cardStackView)
         manager = CardStackLayoutManager(this, this)
-        manager.setStackFrom(StackFrom.None)
+        // ... (Your existing manager settings) ...
         manager.setVisibleCount(3)
         manager.setTranslationInterval(8.0f)
         manager.setScaleInterval(0.95f)
         manager.setSwipeThreshold(0.3f)
         manager.setMaxDegree(20.0f)
         manager.setDirections(Direction.HORIZONTAL)
-        manager.setCanScrollHorizontal(true)
-        manager.setCanScrollVertical(false)
 
         cardStackView.layoutManager = manager
         adapter = CardStackAdapter()
@@ -74,6 +79,8 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         layoutEmptyState = findViewById(R.id.layout_empty_state)
         val btnRefresh = findViewById<Button>(R.id.btn_refresh_profiles)
         btnRefresh.setOnClickListener {
+            // When refreshing manually, reset filters or keep them?
+            // Here we keep current filters and reload
             layoutEmptyState.visibility = View.GONE
             cardStackView.visibility = View.VISIBLE
             fetchUsersFromFirebase(currentGenderFilter, currentMinAge, currentMaxAge)
@@ -85,92 +92,75 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         fetchUsersFromFirebase("Both", 18, 80)
     }
 
+    // 2. Implement the interface function from FilterBottomSheet
     override fun onFilterApplied(gender: String, minAge: Int, maxAge: Int) {
+        // Save state
         currentGenderFilter = gender
         currentMinAge = minAge
         currentMaxAge = maxAge
 
+        // Reset UI
         layoutEmptyState.visibility = View.GONE
         cardStackView.visibility = View.VISIBLE
 
+        // Fetch with new filters
         Toast.makeText(this, "Filtering: $gender, $minAge-$maxAge", Toast.LENGTH_SHORT).show()
         fetchUsersFromFirebase(gender, minAge, maxAge)
     }
 
+    // 3. Update Fetch Logic
     private fun fetchUsersFromFirebase(gender: String, minAge: Int, maxAge: Int) {
         val db = FirebaseFirestore.getInstance()
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        var query: Query = db.collection("tbl_users")
 
-        // 1. FIRST: Get MY Profile Details
-        db.collection("tbl_users").document(currentUserId).get()
-            .addOnSuccessListener { myDoc ->
-                // Extract MY details
-                val myBirthday = myDoc.getString("birthday") ?: ""
-                val myAge = calculateAgeFromString(myBirthday)
-                val myLocation = myDoc.getString("location") ?: ""
-                val myPassions = (myDoc.get("passions") as? List<String>) ?: emptyList()
+        // FILTER 1: Gender (Server-Side)
+        if (gender != "Both") {
+            // FIX: Use 'whereArrayContains' because 'gender' is stored as an Array in Firestore
+            query = query.whereArrayContains("gender", gender)
+        }
 
-                // 2. SECOND: Get CANDIDATES
-                var query: Query = db.collection("tbl_users")
+        // Note: Fetching 50 to ensure we have enough people after age filtering
+        query.limit(50).get()
+            .addOnSuccessListener { documents ->
+                val tempUsersList = ArrayList<DatingUser>()
 
-                if (gender != "Both") {
-                    query = query.whereArrayContains("gender", gender)
-                }
+                for (document in documents) {
+                    val name = document.getString("name") ?: "Unknown"
+                    val birthdayString = document.getString("birthday") ?: ""
+                    val location = document.getString("location") ?: "No Location"
+                    val matchScore = document.getLong("match_percent")?.toInt() ?: 50
 
-                query.limit(50).get().addOnSuccessListener { documents ->
-                    val usersList = ArrayList<DatingUser>()
+                    // Handle profile picture being empty or null
+                    val profilePicture = document.getString("profile_picture") ?: ""
 
-                    for (document in documents) {
-                        // Skip myself
-                        if (document.id == currentUserId) continue
+                    // Calculate Age
+                    val calculatedAge = calculateAgeFromString(birthdayString)
 
-                        val userId = document.id // Capture the Document ID (User ID)
-                        val name = document.getString("name") ?: "Unknown"
-                        val birthdayString = document.getString("birthday") ?: ""
-                        val location = document.getString("location") ?: "No Location"
-                        val profilePicture = document.getString("profile_picture") ?: ""
-                        val theirPassions = (document.get("passions") as? List<String>) ?: emptyList()
-
-                        val calculatedAge = calculateAgeFromString(birthdayString)
-
-                        if (calculatedAge in minAge..maxAge) {
-                            // 3. THIRD: CALCULATE DYNAMIC MATCH SCORE
-                            val dynamicMatchPercent = calculateMatchScore(
-                                myInterests = myPassions,
-                                theirInterests = theirPassions,
-                                myAge = myAge,
-                                theirAge = calculatedAge,
-                                myLocation = myLocation,
-                                theirLocation = location
-                            )
-
-                            usersList.add(
-                                DatingUser(
-                                    userId, // Pass the captured ID here
-                                    name,
-                                    calculatedAge,
-                                    location,
-                                    dynamicMatchPercent,
-                                    listOf(profilePicture),
-                                    theirPassions
-                                )
-                            )
-                        }
-                    }
-
-                    // Sorting: Show highest match % first
-                    usersList.sortByDescending { it.matchPercent }
-
-                    adapter.setUsers(usersList)
-
-                    if (usersList.isEmpty()) {
-                        cardStackView.visibility = View.GONE
-                        layoutEmptyState.visibility = View.VISIBLE
-                    } else {
-                        cardStackView.visibility = View.VISIBLE
-                        layoutEmptyState.visibility = View.GONE
+                    // FILTER 2: Age (Client-Side)
+                    if (calculatedAge in minAge..maxAge) {
+                        tempUsersList.add(
+                            DatingUser(name, calculatedAge, location, matchScore, listOf(profilePicture))
+                        )
                     }
                 }
+
+                // Update Adapter
+                adapter.setUsers(tempUsersList)
+
+                // Check Empty State
+                if (tempUsersList.isEmpty()) {
+                    cardStackView.visibility = View.GONE
+                    layoutEmptyState.visibility = View.VISIBLE
+                    // Optional: Update empty text to be more specific
+                    // findViewById<TextView>(R.id.tv_empty_message).text = "No $gender found in that age range."
+                } else {
+                    cardStackView.visibility = View.VISIBLE
+                    layoutEmptyState.visibility = View.GONE
+                }
+            }
+            .addOnFailureListener { exception ->
+                exception.printStackTrace()
+                Toast.makeText(this, "Error fetching users: ${exception.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -218,90 +208,12 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         }
     }
 
-    private fun calculateMatchScore(
-        myInterests: List<String>,
-        theirInterests: List<String>,
-        myAge: Int,
-        theirAge: Int,
-        myLocation: String,
-        theirLocation: String
-    ): Int {
-        var score = 0.0
-
-        // 1. COMMON PASSIONS
-        val commonInterests = myInterests.intersect(theirInterests.toSet()).size
-        val interestScore = (commonInterests * 15.0).coerceAtMost(60.0)
-        score += interestScore
-
-        // 2. AGE PROXIMITY
-        val ageGap = kotlin.math.abs(myAge - theirAge)
-        if (ageGap <= 2) {
-            score += 20.0
-        } else if (ageGap <= 5) {
-            score += 10.0
-        }
-
-        // 3. LOCATION MATCH
-        if (myLocation.equals(theirLocation, ignoreCase = true)) {
-            score += 20.0
-        }
-
-        val finalScore = (score + 40).coerceAtMost(100.0)
-        return finalScore.toInt()
-    }
-
-    // --- CardStackListener Implementation ---
-
+    // ... (Existing CardStackListener methods: onCardSwiped, etc.) ...
     override fun onCardSwiped(direction: Direction?) {
-        // The card that was just swiped is at (topPosition - 1)
-        // because the manager has already advanced the index internally.
-        val position = manager.topPosition - 1
-        val swipedUser = adapter.getUser(position)
-
-        if (swipedUser != null) {
-            if (direction == Direction.Right) {
-                // Swiped Right -> LIKE
-                saveMatchToFirestore(swipedUser, "like")
-                Toast.makeText(this, "Liked ${swipedUser.name}", Toast.LENGTH_SHORT).show()
-            } else if (direction == Direction.Left) {
-                // Swiped Left -> PASS
-                // Optional: Save pass to DB to avoid showing them again
-            }
-        }
-
-        // Check for empty state
         if (manager.topPosition == adapter.itemCount) {
             cardStackView.visibility = View.GONE
             layoutEmptyState.visibility = View.VISIBLE
         }
-    }
-
-    private fun saveMatchToFirestore(targetUser: DatingUser, type: String) {
-        val db = FirebaseFirestore.getInstance()
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-        // Save a snapshot of the liked user's data to avoid extra queries later
-        val matchData = hashMapOf(
-            "likerId" to currentUserId,
-            "likedUserId" to targetUser.userId,
-            "likedUserName" to targetUser.name,
-            "likedUserAge" to targetUser.age,
-            "likedUserImage" to (targetUser.images.firstOrNull() ?: ""),
-            "type" to type, // "like" or "superlike"
-            "timestamp" to FieldValue.serverTimestamp()
-        )
-
-        // Create a unique ID for the match document (likerID_likedID) to prevent duplicate entries
-        val documentId = "${currentUserId}_${targetUser.userId}"
-
-        db.collection("tbl_matches").document(documentId)
-            .set(matchData)
-            .addOnSuccessListener {
-                Log.d("MATCH", "Successfully saved match with ${targetUser.name}")
-            }
-            .addOnFailureListener { e ->
-                Log.e("MATCH", "Error saving match", e)
-            }
     }
 
     override fun onCardDragging(direction: Direction?, ratio: Float) {}
