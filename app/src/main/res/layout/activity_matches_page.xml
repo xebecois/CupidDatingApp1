@@ -29,6 +29,7 @@
             <LinearLayout
                 android:layout_width="250dp"
                 android:layout_height="match_parent"
+                android:layout_marginStart="46dp"
                 android:gravity="center"
                 android:orientation="vertical">
 
@@ -43,11 +44,17 @@
 
             </LinearLayout>
 
+            <View
+                android:id="@+id/view2"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
             <androidx.cardview.widget.CardView
                 android:id="@+id/CV_filterMain"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
-                android:layout_marginEnd="25dp"
+                android:layout_marginEnd="48dp"
                 app:cardBackgroundColor="@android:color/white"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="3dp">
@@ -78,13 +85,13 @@
 
                 <TextView
                     android:id="@+id/TV_matchesSH"
-                    android:layout_width="318dp"
+                    android:layout_width="334dp"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="30dp"
                     android:layout_weight="1"
                     android:text="This is a list of people who have liked you and your matches."
                     android:textColor="#80000000"
-                    android:textSize="16sp" />
+                    android:textSize="18sp" />
 
             </LinearLayout>
         </ScrollView>
