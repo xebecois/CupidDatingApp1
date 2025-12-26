@@ -1,22 +1,22 @@
 package com.example.cupiddating
 
 import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
+import android.view.*
+import android.widget.*
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy // Required for caching
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 
 // 1. Data Model
 data class DatingUser(
+    val userId: String,
     val name: String,
     val age: Int,
     val location: String,
     val matchPercent: Int,
-    val images: List<String>
+    val images: List<String>,
+    val passions: List<String> = emptyList()
 )
 
 // 2. Adapter
@@ -54,6 +54,11 @@ class CardStackAdapter(
     fun setUsers(newUsers: List<DatingUser>) {
         this.users = newUsers
         notifyDataSetChanged()
+    }
+
+    // --- Helper function to get the user object by position ---
+    fun getUser(position: Int): DatingUser? {
+        return if (position in users.indices) users[position] else null
     }
 
     // --- Inner Adapter for the Images ---

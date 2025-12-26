@@ -54,7 +54,7 @@
                 android:id="@+id/CV_filterMain"
                 android:layout_width="60dp"
                 android:layout_height="60dp"
-                android:layout_marginEnd="48dp"
+                android:layout_marginEnd="46dp"
                 app:cardBackgroundColor="@android:color/white"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="3dp">

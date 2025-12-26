@@ -1,3 +1,5 @@
+// LoginPage.kt
+
 package com.example.cupiddating
 
 import android.content.Intent
@@ -20,7 +22,7 @@ class LoginPage : AppCompatActivity() {
         val db = FirebaseFirestore.getInstance()
         db.collection("tbl_users").document(userId).get()
             .addOnSuccessListener { document ->
-                val completed = document.getBoolean("profileCompleted") ?: false
+                val completed = document.getBoolean("profile_completed") ?: false
 
                 if (completed) {
                     startActivity(Intent(this, MainActivity::class.java))
@@ -87,7 +89,7 @@ class LoginPage : AppCompatActivity() {
                         val values = mapOf(
                             "name" to name,
                             "email" to email,
-                            "profileCompleted" to false
+                            "profile_completed" to false
                         )
 
                         con.collection("tbl_users").document(userid).set(values)
@@ -126,10 +128,11 @@ class LoginPage : AppCompatActivity() {
                     val db = FirebaseFirestore.getInstance()
                     db.collection("tbl_users").document(userId).get()
                         .addOnSuccessListener { document ->
-                            val isComplete = document.getBoolean("profileCompleted") ?: false
+                            val isComplete = document.getBoolean("profile_completed") ?: false
 
                             if (isComplete) {
                                 // RETURNING USER: Go straight to Home
+                                Toast.makeText(this, "Login Success", Toast.LENGTH_SHORT).show()
                                 val intent = Intent(this, MainActivity::class.java)
                                 startActivity(intent)
                             } else {

@@ -19,6 +19,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 class SignUpPage : AppCompatActivity() {
 
+    private lateinit var auth: FirebaseAuth
+    private lateinit var db: FirebaseFirestore
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -30,81 +33,66 @@ class SignUpPage : AppCompatActivity() {
             insets
         }
 
-        // --- 1. WIDGET INITIALIZATION ---
+        // --- WIDGET INITIALIZATION ---
         val edt_signUpEmail: EditText = findViewById(R.id.edt_signUpEmail)
         val edt_signUpPass: EditText = findViewById(R.id.edt_signUpPass)
         val btn_signUp: Button = findViewById(R.id.btn_signUp)
         val btn_isLogin: Button = findViewById(R.id.btn_isLogin)
-
-        // Note: I am assuming you have a Google button in your Sign Up XML.
-        // If it is named differently in your XML, change "btn_googleSignUp" below.
         val btn_googleSignUp: Button = findViewById(R.id.btn_googleSignUp)
 
-        // --- 2. FIREBASE SETUP ---
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseFirestore.getInstance()
+        // --- FIREBASE SETUP ---
+        auth = FirebaseAuth.getInstance()
+        db = FirebaseFirestore.getInstance()
 
-        // --- 3. GOOGLE SIGN-IN SETUP ---
-        // Configure Google Sign In
+        // --- GOOGLE SIGN-IN SETUP ---
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
-
         val googleClient = GoogleSignIn.getClient(this, gso)
 
-        // --- 4. GOOGLE RESULT LAUNCHER ---
+        // --- GOOGLE RESULT LAUNCHER ---
         val googleLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
-                // Get Google Account
                 val account = task.getResult(ApiException::class.java)
-
-                // Auth with Firebase
                 val credential = GoogleAuthProvider.getCredential(account.idToken, null)
 
                 auth.signInWithCredential(credential)
                     .addOnSuccessListener {
-                        // GOOGLE SIGN UP SUCCESS
-                        val user = auth.currentUser
-                        val userId = user!!.uid
+                        // Check if this is a NEW user before overwriting data
+                        val userId = auth.currentUser!!.uid
+                        val docRef = db.collection("tbl_users").document(userId)
 
-                        // Prepare data for FirestoreQ
-                        val userData = mapOf(
-                            "name" to (user.displayName ?: "No Name"),
-                            "email" to (user.email ?: ""),
-                            "profile_completed" to false // Important flag for navigation logic
-                        )
-
-                        // Save to Firestore
-                        db.collection("tbl_users").document(userId).set(userData)
-                            .addOnSuccessListener {
-                                Toast.makeText(this, "Account Created", Toast.LENGTH_SHORT).show()
-                                // Go to Profile Setup
-                                val intent = Intent(this, ProfileDetails::class.java)
-                                startActivity(intent)
+                        docRef.get().addOnSuccessListener { document ->
+                            if (!document.exists()) {
+                                // Only generate ID and save if user is NEW
+                                val name = auth.currentUser?.displayName ?: "No Name"
+                                val email = auth.currentUser?.email ?: ""
+                                saveUserWithSequentialId(userId, email, name)
+                            } else {
+                                // User exists, just login
+                                startActivity(Intent(this, MainActivity::class.java))
                                 finish()
                             }
+                        }
                     }
                     .addOnFailureListener {
                         Toast.makeText(this, "Authentication Failed", Toast.LENGTH_SHORT).show()
                     }
-
             } catch (e: ApiException) {
-                Toast.makeText(this, "Google Sign Up Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Google Sign Up Failed", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // --- 5. BUTTON LISTENERS ---
+        // --- BUTTON LISTENERS ---
 
-        // A. Google Sign Up Button
         btn_googleSignUp.setOnClickListener {
             googleLauncher.launch(googleClient.signInIntent)
         }
 
-        // B. Email/Password Sign Up Button
         btn_signUp.setOnClickListener {
             val email = edt_signUpEmail.text.toString().trim()
             val password = edt_signUpPass.text.toString().trim()
@@ -114,41 +102,65 @@ class SignUpPage : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Create Account
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
                     val userId = auth.currentUser!!.uid
-
-                    // Create basic user map
-                    val userData = mapOf(
-                        "email" to email,
-                        "profile_completed" to false, // Set false so they are forced to setup profile
-                        "role" to "user"
-                    )
-
-                    // Save to Firestore
-                    db.collection("tbl_users").document(userId).set(userData)
-                        .addOnSuccessListener {
-                            Toast.makeText(this, "Sign Up Successful", Toast.LENGTH_SHORT).show()
-                            // Navigate to Profile Details
-                            val intent = Intent(this, ProfileDetails::class.java)
-                            startActivity(intent)
-                            finish()
-                        }
-                        .addOnFailureListener { e ->
-                            Toast.makeText(this, "Database Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
+                    // Call the helper function to generate ID and Save
+                    saveUserWithSequentialId(userId, email, null)
                 }
                 .addOnFailureListener { e ->
                     Toast.makeText(this, "Sign Up Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
         }
 
-        // C. "Already have an account?" Button
         btn_isLogin.setOnClickListener {
             val intent = Intent(this, LoginPage::class.java)
             startActivity(intent)
-            finish() // Close sign up page so user can't go back to it easily
+            finish()
         }
+    }
+
+    // --- HELPER FUNCTION: GENERATE SEQUENTIAL ID & SAVE ---
+    private fun saveUserWithSequentialId(userId: String, email: String, name: String?) {
+        // 1. Get the current count of users to determine the next number
+        db.collection("tbl_users")
+            .get()
+            .addOnSuccessListener { documents ->
+
+                // Get current count (e.g., 30) and add 1 (e.g., 31)
+                val currentCount = documents.size()
+                val nextCount = currentCount + 1
+
+                // Format the ID: "user_" + 3 digits (e.g., "user_031")
+                val formattedUserId = String.format("user_%03d", nextCount)
+
+                // 2. Prepare the data
+                val userData = hashMapOf(
+                    "user_id" to formattedUserId,   // The custom sequential ID
+                    "email" to email,
+                    "profile_completed" to false,
+                    "role" to "user"
+                )
+                // Add name only if it exists (for Google Sign Up)
+                if (name != null) {
+                    userData["name"] = name
+                }
+
+                // 3. Save to Firestore using the AUTH UID as the document key
+                // (This ensures your Login page works correctly)
+                db.collection("tbl_users").document(userId).set(userData)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "Account Created:", Toast.LENGTH_SHORT).show()
+                        val intent = Intent(this, ProfileDetails::class.java)
+                        startActivity(intent)
+                        finish()
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(this, "Database Error", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to get user count", Toast.LENGTH_SHORT).show()
+            }
     }
 }
