@@ -120,7 +120,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:paddingRight="20dp">
+                        android:paddingRight="40dp">
 
                         <TextView
                             android:id="@+id/textView7"
