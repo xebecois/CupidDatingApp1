@@ -229,12 +229,6 @@ class MatchesPage : AppCompatActivity() {
     }
 
     private fun setupNavigation() {
-        val btnFilter = findViewById<ImageButton>(R.id.btnFilter)
-        btnFilter.setOnClickListener {
-            val filterSheet = FilterBottomSheet()
-            filterSheet.show(supportFragmentManager, "FilterBottomSheet")
-        }
-
         val btnHome: ImageButton = findViewById(R.id.btnHome)
         btnHome.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)

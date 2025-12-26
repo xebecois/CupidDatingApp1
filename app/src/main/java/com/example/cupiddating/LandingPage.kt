@@ -1,13 +1,14 @@
-package com.example.cupiddating // Make sure this matches your package
+// LandingPage.kt
+
+package com.example.cupiddating
 
 import android.content.Intent
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.os.*
+import android.widget.Toast
+import androidx.core.view.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import com.google.firebase.auth.FirebaseAuth
 
 class LandingPage : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -15,23 +16,57 @@ class LandingPage : AppCompatActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_landing_page)
 
-        // 1. Handle the Edge-to-Edge padding (Your existing code)
+        // 1. Handle Edge-to-Edge
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
-        // 2. THE NEW PART: Wait 3 seconds, then move to Login
+        // 2. Wait 5 seconds, THEN check session validity
         Handler(Looper.getMainLooper()).postDelayed({
-            // Create the intent to move to the LoginPage
-            // (Ensure your login class is named 'LoginPage')
-            val intent = Intent(this, LoginPage::class.java)
-            startActivity(intent)
 
-            // "finish()" removes this Landing Page from the back stack
-            // so the user can't go back to it by pressing the back button.
-            finish()
-        }, 5000) // 5000 milliseconds = 5 seconds
+            checkSessionAndRedirect()
+
+        }, 5000)
+    }
+
+    private fun checkSessionAndRedirect() {
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+
+        if (currentUser != null) {
+            // --- TIME CHECK LOGIC ---
+            val lastSignInTime = currentUser.metadata?.lastSignInTimestamp ?: 0L
+            val currentTime = System.currentTimeMillis()
+
+            // 24 hours in milliseconds = 24 * 60 * 60 * 1000 = 86,400,000
+            val sessionTimeout = 24 * 60 * 60 * 1000L
+
+            if (currentTime - lastSignInTime > sessionTimeout) {
+                // Session Expired: Force logout
+                auth.signOut()
+                Toast.makeText(this, "Session expired. Please log in again.", Toast.LENGTH_LONG).show()
+                goToLogin()
+            } else {
+                // Session Valid: Go to Main
+                goToMain()
+            }
+        } else {
+            // No user found: Go to Login
+            goToLogin()
+        }
+    }
+
+    private fun goToLogin() {
+        val intent = Intent(this, LoginPage::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    private fun goToMain() {
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 }
