@@ -8,13 +8,14 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy // Required for caching
 
 // 1. Data Model
 data class DatingUser(
     val name: String,
-    val age: Long,
-    val job: String,
-    val matchPercent: Long,
+    val age: Int,
+    val location: String,
+    val matchPercent: Int,
     val images: List<String>
 )
 
@@ -25,14 +26,13 @@ class CardStackAdapter(
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvNameAge: TextView = view.findViewById(R.id.tv_userNameAge)
-        val tvJob: TextView = view.findViewById(R.id.tv_userJob)
+        val tvLocation: TextView = view.findViewById(R.id.tv_userLocation)
         val tvMatch: TextView = view.findViewById(R.id.tv_matchPercent)
         val viewPager: ViewPager2 = view.findViewById(R.id.vp_imageSlider)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
-        // Ensure this layout name matches your item XML file name exactly
         val view = inflater.inflate(R.layout.activity_item_user_card, parent, false)
         return ViewHolder(view)
     }
@@ -41,10 +41,9 @@ class CardStackAdapter(
         val user = users[position]
 
         holder.tvNameAge.text = "${user.name}, ${user.age}"
-        holder.tvJob.text = user.job
+        holder.tvLocation.text = user.location
         holder.tvMatch.text = "${user.matchPercent}% Match"
 
-        // Setup Image Slider (ViewPager2)
         if (user.images.isNotEmpty()) {
             holder.viewPager.adapter = InnerImageAdapter(user.images)
         }
@@ -57,7 +56,7 @@ class CardStackAdapter(
         notifyDataSetChanged()
     }
 
-    // --- Inner Adapter for the Images inside the card ---
+    // --- Inner Adapter for the Images ---
     inner class InnerImageAdapter(private val imageUrls: List<String>) :
         RecyclerView.Adapter<InnerImageAdapter.ImageViewHolder>() {
 
@@ -74,8 +73,12 @@ class CardStackAdapter(
         }
 
         override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
+            // --- LAZY LOADING & OPTIMIZATION APPLIED HERE ---
             Glide.with(holder.itemView.context)
                 .load(imageUrls[position])
+                .diskCacheStrategy(DiskCacheStrategy.ALL) // Cache image to disk (Lazy Load optimization)
+                .thumbnail(0.1f) // Load a low-quality version immediately
+                .placeholder(android.R.color.darker_gray) // Show gray while loading
                 .into(holder.imageView)
         }
 

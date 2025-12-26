@@ -58,16 +58,16 @@
             android:textColor="#FFFFFF"
             android:textSize="24sp"
             android:textStyle="bold"
-            app:layout_constraintBottom_toTopOf="@+id/tv_userJob"
+            app:layout_constraintBottom_toTopOf="@+id/tv_userLocation"
             app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
-            android:id="@+id/tv_userJob"
+            android:id="@+id/tv_userLocation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
             android:layout_marginBottom="25dp"
-            android:text="Professional Model"
+            android:text="California, USA"
             android:textColor="#DDDDDD"
             android:textSize="14sp"
             app:layout_constraintBottom_toBottomOf="@+id/vp_imageSlider"
