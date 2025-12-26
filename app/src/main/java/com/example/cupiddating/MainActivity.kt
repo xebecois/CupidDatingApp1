@@ -11,6 +11,7 @@ import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
 import com.yuyakaido.android.cardstackview.*
 import java.text.SimpleDateFormat
@@ -56,6 +57,13 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         val btnMainProfile: ImageButton = findViewById(R.id.btnMainProfile)
         btnMainProfile.setOnClickListener {
             val intent = Intent(this, ProfilePage::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            startActivity(intent)
+        }
+
+        val btnMainMessage: ImageButton = findViewById(R.id.btnMainMessages)
+        btnMainMessage.setOnClickListener {
+            val intent = Intent(this, MessagingPage::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         }
@@ -106,12 +114,13 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
 
     private fun fetchUsersFromFirebase(gender: String, minAge: Int, maxAge: Int) {
         val db = FirebaseFirestore.getInstance()
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         // 1. FIRST: Get MY Profile Details
-        db.collection("tbl_users").document(currentUserId).get()
+        db.collection("tbl_users").document(authUid).get()
             .addOnSuccessListener { myDoc ->
                 // Extract MY details
+                val myRealIdField = myDoc.getString("user_id") ?: ""
                 val myBirthday = myDoc.getString("birthday") ?: ""
                 val myAge = calculateAgeFromString(myBirthday)
                 val myLocation = myDoc.getString("location") ?: ""
@@ -129,9 +138,12 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
 
                     for (document in documents) {
                         // Skip myself
-                        if (document.id == currentUserId) continue
+                        if (document.id == authUid) continue
 
-                        val userId = document.id // Capture the Document ID (User ID)
+                        val theirIdField = document.getString("user_id") ?: ""
+                        val userId = document.getString("user_id") ?: ""
+                        if (theirIdField == myRealIdField || theirIdField.isEmpty()) continue
+
                         val name = document.getString("name") ?: "Unknown"
                         val birthdayString = document.getString("birthday") ?: ""
                         val location = document.getString("location") ?: "No Location"
@@ -283,32 +295,54 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         }
     }
 
+    // In MainActivity.kt, update saveMatchToFirestore:
     private fun saveMatchToFirestore(targetUser: DatingUser, type: String) {
         val db = FirebaseFirestore.getInstance()
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // Save a snapshot of the liked user's data to avoid extra queries later
+        // Get YOUR user_id field first to ensure we aren't using the Document ID
+        db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
+            val myIdField = myDoc.getString("user_id") ?: return@addOnSuccessListener
+            val targetIdField = targetUser.userId // This is already the field from your adapter
+
+            val likeData = hashMapOf(
+                "liker_id" to myIdField,     // This is now the field "user_id"
+                "target_id" to targetIdField, // This is now the field "user_id"
+                "timestamp" to FieldValue.serverTimestamp()
+            )
+
+            // Predictable Doc ID for likes (using the fields)
+            val likeDocId = "${myIdField}_${targetIdField}"
+
+            db.collection("tbl_likes").document(likeDocId).set(likeData)
+                .addOnSuccessListener {
+                    // Check for reverse match using fields
+                    db.collection("tbl_likes")
+                        .whereEqualTo("liker_id", targetIdField)
+                        .whereEqualTo("target_id", myIdField)
+                        .get()
+                        .addOnSuccessListener { documents ->
+                            if (!documents.isEmpty) {
+                                createNewMatchDocument(myIdField, targetIdField)
+                                Toast.makeText(this, "Match with ${targetUser.name}!", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                }
+        }
+    }
+
+    private fun createNewMatchDocument(userId1: String, userId2: String) {
+        val db = FirebaseFirestore.getInstance()
+        val sortedIds = listOf(userId1, userId2).sorted()
+        val matchDocId = "${sortedIds[0]}_${sortedIds[1]}"
+
         val matchData = hashMapOf(
-            "likerId" to currentUserId,
-            "likedUserId" to targetUser.userId,
-            "likedUserName" to targetUser.name,
-            "likedUserAge" to targetUser.age,
-            "likedUserImage" to (targetUser.images.firstOrNull() ?: ""),
-            "type" to type, // "like" or "superlike"
-            "timestamp" to FieldValue.serverTimestamp()
+            "match_id" to matchDocId,
+            "user_id_1" to sortedIds[0], // Using the user_id fields
+            "user_id_2" to sortedIds[1],
+            "match_date" to FieldValue.serverTimestamp()
         )
-
-        // Create a unique ID for the match document (likerID_likedID) to prevent duplicate entries
-        val documentId = "${currentUserId}_${targetUser.userId}"
-
-        db.collection("tbl_matches").document(documentId)
-            .set(matchData)
-            .addOnSuccessListener {
-                Log.d("MATCH", "Successfully saved match with ${targetUser.name}")
-            }
-            .addOnFailureListener { e ->
-                Log.e("MATCH", "Error saving match", e)
-            }
+        db.collection("tbl_matches").document(matchDocId).set(matchData)
     }
 
     override fun onCardDragging(direction: Direction?, ratio: Float) {}

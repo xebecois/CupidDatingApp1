@@ -17,6 +17,7 @@ class ProfilePage : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private lateinit var storage: FirebaseStorage
+    private lateinit var googleSignInClient: com.google.android.gms.auth.api.signin.GoogleSignInClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +33,12 @@ class ProfilePage : AppCompatActivity() {
         storage = FirebaseStorage.getInstance()
         setupWindowInsets()
         loadUserProfile()
+
+        val gso = com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        googleSignInClient = com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(this, gso)
 
         val btnEdit = findViewById<ImageButton>(R.id.edtProfileBtn)
         btnEdit.setOnClickListener {
@@ -52,6 +59,19 @@ class ProfilePage : AppCompatActivity() {
             val intent = Intent(this, MainActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
+        }
+
+        // Inside onCreate, after other button setups:
+        val btnLogout = findViewById<Button>(R.id.logout)
+        btnLogout.setOnClickListener {
+            auth.signOut()
+            // This ensures the Google account picker appears again on next login
+            googleSignInClient.signOut().addOnCompleteListener {
+                val intent = Intent(this, LoginPage::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
         }
 
     }

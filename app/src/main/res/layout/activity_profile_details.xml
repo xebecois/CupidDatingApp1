@@ -177,9 +177,11 @@
                         android:id="@+id/edt_pfpBirthday"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:hint="MM/DD/YYYY"
                         android:clickable="true"
-                        android:focusable="false"
-                        android:inputType="none"
+                        android:focusable="true"
+                        android:inputType="date"
+                        android:maxLength="10"
                         android:paddingStart="45dp"
                         android:textColor="#000000" />
                 </com.google.android.material.textfield.TextInputLayout>

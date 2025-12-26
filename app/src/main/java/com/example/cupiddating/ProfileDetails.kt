@@ -101,21 +101,82 @@ class ProfileDetails : AppCompatActivity() {
     }
 
     private fun setupBirthdayPicker() {
-        edtBirthday.setOnClickListener {
-            val calendar = Calendar.getInstance()
-            val year = calendar.get(Calendar.YEAR)
-            val month = calendar.get(Calendar.MONTH)
-            val day = calendar.get(Calendar.DAY_OF_MONTH)
+        // Add this flag to track when the code (not the user) is changing the text
+        var isUpdating = false
 
-            val datePickerDialog = DatePickerDialog(
-                this,
-                { _, selectedYear, selectedMonth, selectedDay ->
-                    val formattedDate = "${selectedMonth + 1}/$selectedDay/$selectedYear"
-                    edtBirthday.setText(formattedDate)
-                },
-                year, month, day
-            )
-            datePickerDialog.show()
+        edtBirthday.addTextChangedListener(object : android.text.TextWatcher {
+            private var current = ""
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                // 1. If the update is coming from our code, skip it
+                if (isUpdating) {
+                    isUpdating = false
+                    return
+                }
+
+                if (s.toString() != current) {
+                    val clean = s.toString().replace("[^\\d]".toRegex(), "")
+                    val formatted = StringBuilder()
+
+                    for (i in clean.indices) {
+                        formatted.append(clean[i])
+                        // Add slashes after the 2nd (MM) and 4th (DD) digits
+                        if ((i == 1 || i == 3) && i != clean.length - 1) {
+                            formatted.append("/")
+                        }
+                    }
+
+                    current = formatted.toString()
+
+                    // 2. Set the flag to true before calling setText
+                    isUpdating = true
+                    edtBirthday.setText(current)
+
+                    // 3. Keep the cursor at the end of the text
+                    edtBirthday.setSelection(current.length)
+                }
+            }
+
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+    }
+
+    private fun validateBirthday(): Boolean {
+        val birthday = edtBirthday.text.toString().trim()
+
+        // 1. Basic empty check
+        if (birthday.isEmpty()) {
+            edtBirthday.error = "Birthday is required"
+            return false
+        }
+        // 2. Format check (MM/DD/YYYY)
+        val datePattern = "^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/\\d{4}$".toRegex()
+        if (!birthday.matches(datePattern)) {
+            edtBirthday.error = "Enter a valid date (MM/DD/YYYY)"
+            return false
+        }
+        // 3. Age check (Must be 18+)
+        return try {
+            val sdf = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.US)
+            val birthDate = sdf.parse(birthday) ?: return false
+            val today = Calendar.getInstance()
+            val birthCalendar = Calendar.getInstance().apply { time = birthDate }
+
+            var age = today.get(Calendar.YEAR) - birthCalendar.get(Calendar.YEAR)
+            if (today.get(Calendar.DAY_OF_YEAR) < birthCalendar.get(Calendar.DAY_OF_YEAR)) {
+                age--
+            }
+            if (age < 18) {
+                edtBirthday.error = "You must be at least 18 years old"
+                false
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            edtBirthday.error = "Invalid Date"
+            false
         }
     }
 
@@ -160,13 +221,9 @@ class ProfileDetails : AppCompatActivity() {
         if (edtName.text.isNullOrEmpty()) { edtName.error = "Name is required"; isValid = false }
         if (edtMobile.text.isNullOrEmpty()) { edtMobile.error = "Mobile No. is required"; isValid = false }
         if (edtLocation.text.isNullOrEmpty()) { edtLocation.error = "Location is required"; isValid = false }
-        if (edtBirthday.text.isNullOrEmpty() || edtBirthday.text.toString() == "mm/dd/yyyy") {
-            if(edtBirthday.text.toString() == "mm/dd/yyyy") {
-                Toast.makeText(this, "Please select your birthday", Toast.LENGTH_SHORT).show()
-            } else {
-                edtBirthday.error = "Birthday is required"
-            }
+        if (!validateBirthday()) {
             isValid = false
+            return isValid
         }
         if (edtGender.text.isNullOrEmpty()) { Toast.makeText(this, "Please select your gender", Toast.LENGTH_SHORT).show() ; isValid = false }
         if (edtBio.text.isNullOrEmpty()) { edtBio.error = "Bio is required"; isValid = false }
