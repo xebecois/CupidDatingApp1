@@ -18,14 +18,35 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/TV_matchesH1"
+        <LinearLayout
+            android:id="@+id/LL1_matchesPage_topNav"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="Matches"
-            android:textSize="34sp"
-            android:textStyle="bold" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/TV_matchesH1"
+                android:layout_width="match_parent"
+                android:layout_height="90dp"
+                android:gravity="center"
+                android:paddingTop="25dp"
+                android:text="Matches"
+                android:textSize="36sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/TV_matchesSH2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="45sp"
+                android:text="This is a list of people who have liked you and your matches."
+                android:textColor="#80000000"
+                android:textSize="18sp" />
+
+        </LinearLayout>
 
         <ScrollView
             android:layout_width="match_parent"
@@ -37,19 +58,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/TV_matchesSH"
-                    android:layout_width="334dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="30dp"
-                    android:layout_weight="1"
-                    android:text="This is a list of people who have liked you and your matches."
-                    android:textColor="#80000000"
-                    android:textSize="18sp" />
-
-            </LinearLayout>
+                android:orientation="vertical"/>
         </ScrollView>
 
         <LinearLayout
