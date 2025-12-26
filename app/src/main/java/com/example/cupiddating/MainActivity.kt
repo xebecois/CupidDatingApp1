@@ -116,80 +116,92 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         val db = FirebaseFirestore.getInstance()
         val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // 1. FIRST: Get MY Profile Details
+        // 1. Get MY Profile Details
         db.collection("tbl_users").document(authUid).get()
             .addOnSuccessListener { myDoc ->
-                // Extract MY details
                 val myRealIdField = myDoc.getString("user_id") ?: ""
                 val myBirthday = myDoc.getString("birthday") ?: ""
                 val myAge = calculateAgeFromString(myBirthday)
                 val myLocation = myDoc.getString("location") ?: ""
                 val myPassions = (myDoc.get("passions") as? List<String>) ?: emptyList()
 
-                // 2. SECOND: Get CANDIDATES
-                var query: Query = db.collection("tbl_users")
+                // 2. Get the list of people I already LIKED/MATCHED
+                db.collection("tbl_likes")
+                    .whereEqualTo("liker_id", myRealIdField)
+                    .get()
+                    .addOnSuccessListener { alreadyInteractedDocs ->
 
-                if (gender != "Both") {
-                    query = query.whereArrayContains("gender", gender)
-                }
+                        // Create a set of IDs to exclude
+                        val excludedIds = mutableSetOf<String>()
+                        excludedIds.add(myRealIdField) // Exclude myself
 
-                query.limit(50).get().addOnSuccessListener { documents ->
-                    val usersList = ArrayList<DatingUser>()
+                        for (doc in alreadyInteractedDocs) {
+                            val targetId = doc.getString("target_id")
+                            if (targetId != null) excludedIds.add(targetId)
+                        }
 
-                    for (document in documents) {
-                        // Skip myself
-                        if (document.id == authUid) continue
+                        // 3. Now fetch the candidate users
+                        var query: Query = db.collection("tbl_users")
+                        if (gender != "Both") {
+                            query = query.whereArrayContains("gender", gender)
+                        }
 
-                        val theirIdField = document.getString("user_id") ?: ""
-                        val userId = document.getString("user_id") ?: ""
-                        if (theirIdField == myRealIdField || theirIdField.isEmpty()) continue
+                        query.limit(50).get().addOnSuccessListener { documents ->
+                            val usersList = ArrayList<DatingUser>()
 
-                        val name = document.getString("name") ?: "Unknown"
-                        val birthdayString = document.getString("birthday") ?: ""
-                        val location = document.getString("location") ?: "No Location"
-                        val profilePicture = document.getString("profile_picture") ?: ""
-                        val theirPassions = (document.get("passions") as? List<String>) ?: emptyList()
+                            for (document in documents) {
+                                val theirIdField = document.getString("user_id") ?: ""
 
-                        val calculatedAge = calculateAgeFromString(birthdayString)
+                                // CHECK IF THEY ARE IN THE EXCLUDED LIST
+                                if (excludedIds.contains(theirIdField) || theirIdField.isEmpty()) {
+                                    continue
+                                }
 
-                        if (calculatedAge in minAge..maxAge) {
-                            // 3. THIRD: CALCULATE DYNAMIC MATCH SCORE
-                            val dynamicMatchPercent = calculateMatchScore(
-                                myInterests = myPassions,
-                                theirInterests = theirPassions,
-                                myAge = myAge,
-                                theirAge = calculatedAge,
-                                myLocation = myLocation,
-                                theirLocation = location
-                            )
+                                val name = document.getString("name") ?: "Unknown"
+                                val birthdayString = document.getString("birthday") ?: ""
+                                val location = document.getString("location") ?: "No Location"
+                                val profilePicture = document.getString("profile_picture") ?: ""
+                                val theirPassions = (document.get("passions") as? List<String>) ?: emptyList()
 
-                            usersList.add(
-                                DatingUser(
-                                    userId, // Pass the captured ID here
-                                    name,
-                                    calculatedAge,
-                                    location,
-                                    dynamicMatchPercent,
-                                    listOf(profilePicture),
-                                    theirPassions
-                                )
-                            )
+                                val calculatedAge = calculateAgeFromString(birthdayString)
+
+                                if (calculatedAge in minAge..maxAge) {
+                                    val dynamicMatchPercent = calculateMatchScore(
+                                        myInterests = myPassions,
+                                        theirInterests = theirPassions,
+                                        myAge = myAge,
+                                        theirAge = calculatedAge,
+                                        myLocation = myLocation,
+                                        theirLocation = location
+                                    )
+
+                                    usersList.add(
+                                        DatingUser(
+                                            theirIdField,
+                                            name,
+                                            calculatedAge,
+                                            location,
+                                            dynamicMatchPercent,
+                                            listOf(profilePicture),
+                                            theirPassions
+                                        )
+                                    )
+                                }
+                            }
+
+                            usersList.sortByDescending { it.matchPercent }
+                            adapter.setUsers(usersList)
+
+                            // Handle Empty State
+                            if (usersList.isEmpty()) {
+                                cardStackView.visibility = View.GONE
+                                layoutEmptyState.visibility = View.VISIBLE
+                            } else {
+                                cardStackView.visibility = View.VISIBLE
+                                layoutEmptyState.visibility = View.GONE
+                            }
                         }
                     }
-
-                    // Sorting: Show highest match % first
-                    usersList.sortByDescending { it.matchPercent }
-
-                    adapter.setUsers(usersList)
-
-                    if (usersList.isEmpty()) {
-                        cardStackView.visibility = View.GONE
-                        layoutEmptyState.visibility = View.VISIBLE
-                    } else {
-                        cardStackView.visibility = View.VISIBLE
-                        layoutEmptyState.visibility = View.GONE
-                    }
-                }
             }
     }
 

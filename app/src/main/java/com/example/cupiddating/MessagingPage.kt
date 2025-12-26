@@ -51,58 +51,78 @@ class MessagingPage : AppCompatActivity() {
 
     // Inside MessagingPage class
     private fun fetchMatches() {
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
-        // Clear container to avoid duplicates if refreshing
+        val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val container = findViewById<LinearLayout>(R.id.LL_messagePageInflater)
         container.removeAllViews()
 
-        // Query 1: Where I am User 1
-        db.collection("tbl_matches").whereEqualTo("user_id_1", currentUserId).get()
-            .addOnSuccessListener { documents ->
-                for (doc in documents) {
-                    val otherUserId = doc.getString("user_id_2") ?: continue
-                    loadMatchUI(otherUserId, container)
+        // 1. Get YOUR real user_id field first
+        db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
+            val myRealIdField = myDoc.getString("user_id") ?: ""
+            if (myRealIdField.isEmpty()) return@addOnSuccessListener
+
+            // 2. Query matches where YOU are either user_1 or user_2
+            // We run two queries to cover both possible slots in the match document
+            val queries = listOf(
+                db.collection("tbl_matches").whereEqualTo("user_id_1", myRealIdField),
+                db.collection("tbl_matches").whereEqualTo("user_id_2", myRealIdField)
+            )
+
+            queries.forEach { query ->
+                query.get().addOnSuccessListener { documents ->
+                    for (doc in documents) {
+                        val u1 = doc.getString("user_id_1") ?: ""
+                        val u2 = doc.getString("user_id_2") ?: ""
+
+                        // The "other" person is the one who ISN'T you
+                        val otherUserId = if (u1 == myRealIdField) u2 else u1
+
+                        if (otherUserId.isNotEmpty()) {
+                            loadMatchUI(otherUserId, container, myRealIdField)
+                        }
+                    }
                 }
             }
-        // Query 2: Where I am User 2
-        db.collection("tbl_matches").whereEqualTo("user_id_2", currentUserId).get()
-            .addOnSuccessListener { documents ->
-                for (doc in documents) {
-                    val otherUserId = doc.getString("user_id_1") ?: continue
-                    loadMatchUI(otherUserId, container)
-                }
-            }
+        }
     }
 
-    private fun loadMatchUI(otherUserId: String, container: LinearLayout) {
+    private fun loadMatchUI(otherUserId: String, container: LinearLayout, myId: String) {
         val db = FirebaseFirestore.getInstance()
 
-        // 1. Get User Profile info
-        db.collection("tbl_users").document(otherUserId).get().addOnSuccessListener { userDoc ->
-            val name = userDoc.getString("name") ?: "User"
-            val image = userDoc.getString("profile_picture") ?: ""
+        // Query for the user document where the FIELD "user_id" matches
+        db.collection("tbl_users")
+            .whereEqualTo("user_id", otherUserId)
+            .get()
+            .addOnSuccessListener { userDocs ->
+                if (userDocs.isEmpty) return@addOnSuccessListener
 
-            // 2. Get the Latest Message
-            db.collection("tbl_messages")
-                .whereIn("sender_id", listOf(otherUserId, "myID")) // Logic to find conversation
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .limit(1)
-                .get()
-                .addOnSuccessListener { msgDocs ->
-                    val lastMsg = if (msgDocs.isEmpty) "Say hi!" else msgDocs.documents[0].getString("message")
+                val userDoc = userDocs.documents[0]
+                val name = userDoc.getString("name") ?: "User"
+                val imageUrl = userDoc.getString("profile_picture") ?: ""
 
-                    // 3. Inflate row and set data
-                    val view = layoutInflater.inflate(R.layout.item_message_row, container, false)
-                    view.findViewById<TextView>(R.id.tv_match_name).text = name
-                    view.findViewById<TextView>(R.id.tv_match_last_msg).text = lastMsg
+                // Inflate row
+                val view = layoutInflater.inflate(R.layout.item_message_row, container, false)
 
-                    // Add click listener to open Chat
-                    view.setOnClickListener { /* Open ChatActivity */ }
+                // Set Data
+                view.findViewById<TextView>(R.id.tv_match_name).text = name
+                val profileImage = view.findViewById<ImageView>(R.id.iv_match_profile)
 
-                    container.addView(view)
+                if (imageUrl.isNotEmpty()) {
+                    com.bumptech.glide.Glide.with(this).load(imageUrl).into(profileImage)
                 }
-        }
+
+                // Optional: Add "Say hi!" as default last message
+                view.findViewById<TextView>(R.id.tv_match_last_msg).text = "New Match! Say hi 👋"
+
+                // Click to Chat (Pass the other person's ID)
+                view.setOnClickListener {
+                    // We pass the IDs we gathered earlier
+                    val chatDialog = LayoutChatDialog(otherUserId, name, myId)
+                    chatDialog.show(supportFragmentManager, "LayoutChatDialog")
+                }
+
+                container.addView(view)
+            }
     }
 
 }
