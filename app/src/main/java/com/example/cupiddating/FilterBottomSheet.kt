@@ -1,48 +1,85 @@
 package com.example.cupiddating
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.TextView
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.slider.RangeSlider
 
 class FilterBottomSheet : BottomSheetDialogFragment() {
 
-    // This connects your "filter xml" to this class
+    // 1. Define an Interface to pass data back
+    interface FilterListener {
+        fun onFilterApplied(gender: String, minAge: Int, maxAge: Int)
+    }
+
+    private var listener: FilterListener? = null
+
+    // 2. Attach the listener when the fragment attaches to MainActivity
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        try {
+            listener = context as FilterListener
+        } catch (e: ClassCastException) {
+            throw ClassCastException("$context must implement FilterListener")
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Ensure this layout name matches your filter XML filename exactly
         return inflater.inflate(R.layout.activity_layout_filter, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Find the views inside the popup
         val btnContinue = view.findViewById<Button>(R.id.btnContinue)
         val ageSlider = view.findViewById<RangeSlider>(R.id.ageSlider)
+        val toggleGroup = view.findViewById<MaterialButtonToggleGroup>(R.id.toggleGroupGender)
+        val tvMinAge = view.findViewById<TextView>(R.id.agefilter)
+        val tvMaxAge = view.findViewById<TextView>(R.id.textView2)
+        val tvClear = view.findViewById<TextView>(R.id.tvClear)
+
+        // Update text numbers when slider moves
+        ageSlider.addOnChangeListener { slider, _, _ ->
+            val values = slider.values
+            tvMinAge.text = values[0].toInt().toString()
+            tvMaxAge.text = values[1].toInt().toString()
+        }
 
         btnContinue.setOnClickListener {
-            // Get the current values from the slider
-            val selectedAges = ageSlider.values // Returns a List<Float> [e.g., 20.0, 28.0]
+            // A. Get Gender
+            val selectedGender = when (toggleGroup.checkedButtonId) {
+                R.id.btnBoys -> "Male"
+                R.id.btnGirls -> "Female"
+                else -> "Both" // Default or if "Both" is selected
+            }
 
-            // Logic for when the user clicks continue (like reloading the list)
-            // For now, it just closes the popup
+            // B. Get Age Range
+            val values = ageSlider.values
+            val minAge = values[0].toInt()
+            val maxAge = values[1].toInt()
+
+            // C. Send data to MainActivity
+            listener?.onFilterApplied(selectedGender, minAge, maxAge)
             dismiss()
         }
 
-        val tvClear = view.findViewById<View>(R.id.tvClear)
         tvClear.setOnClickListener {
-            // Logic to reset filters
+            // Reset to default: Both genders, 18-80 age
+            listener?.onFilterApplied("Both", 18, 80)
             dismiss()
         }
     }
 
-    // Optional: This makes the background transparent so your rounded corners look nice
+    // Transparent background for rounded corners
     override fun getTheme(): Int = R.style.CustomBottomSheetDialogTheme
 }
