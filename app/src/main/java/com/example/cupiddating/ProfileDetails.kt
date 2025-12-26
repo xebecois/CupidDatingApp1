@@ -1,3 +1,5 @@
+// ProfileDetails.kt
+
 package com.example.cupiddating
 
 import android.app.DatePickerDialog
@@ -20,14 +22,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
 import java.util.Calendar
-import java.util.UUID
 
 class ProfileDetails : AppCompatActivity() {
 
     // 1. Declare UI variables
     private lateinit var ivProfilePhoto: ShapeableImageView
     private lateinit var btnChangePhoto: ImageButton
-    private lateinit var progressBar: ProgressBar // <-- New ProgressBar
+    private lateinit var progressBar: ProgressBar
 
     // Form Fields
     private lateinit var edtName: TextInputEditText
@@ -52,7 +53,7 @@ class ProfileDetails : AppCompatActivity() {
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             ivProfilePhoto.setImageURI(uri)
-            selectedImageUri = uri // <-- Save the URI for upload later
+            selectedImageUri = uri
             isPhotoSelected = true
         }
     }
@@ -71,7 +72,7 @@ class ProfileDetails : AppCompatActivity() {
         // 2. Initialize All Views
         ivProfilePhoto = findViewById(R.id.iv_profile_photo)
         btnChangePhoto = findViewById(R.id.btn_change_photo)
-        progressBar = findViewById(R.id.progressBar_pfp) // <-- Init ProgressBar
+        progressBar = findViewById(R.id.progressBar_pfp)
 
         edtName = findViewById(R.id.edt_pfpName)
         edtMobile = findViewById(R.id.edt_pfpMobileNo)
@@ -84,7 +85,7 @@ class ProfileDetails : AppCompatActivity() {
         edtDistance = findViewById(R.id.edt_pfpDistance)
         btnConfirm = findViewById(R.id.btnConfirm_pfpDetails)
 
-        // --- NEW: Limit Mobile No. to 12 characters ---
+        // Limit Mobile No. to 12 characters
         edtMobile.filters = arrayOf(InputFilter.LengthFilter(12))
 
         // 3. Setup Action Listeners
@@ -97,7 +98,6 @@ class ProfileDetails : AppCompatActivity() {
 
     private fun setupImagePicker() {
         btnChangePhoto.setOnClickListener {
-            // Launches the gallery to pick an image
             pickImageLauncher.launch("image/*")
         }
     }
@@ -153,17 +153,13 @@ class ProfileDetails : AppCompatActivity() {
         }
     }
 
-    // 4. Helper function to check if inputs are valid
     private fun validateInputs(): Boolean {
         var isValid = true
 
-        // Check Photo
         if (!isPhotoSelected || selectedImageUri == null) {
             Toast.makeText(this, "Please select a profile photo", Toast.LENGTH_SHORT).show()
             isValid = false
         }
-
-        // Check Text Fields
         if (edtName.text.isNullOrEmpty()) { edtName.error = "Name is required"; isValid = false }
         if (edtMobile.text.isNullOrEmpty()) { edtMobile.error = "Mobile No. is required"; isValid = false }
         if (edtLocation.text.isNullOrEmpty()) { edtLocation.error = "Location is required"; isValid = false }
@@ -184,32 +180,26 @@ class ProfileDetails : AppCompatActivity() {
         return isValid
     }
 
-    // --- NEW: Upload Image Function ---
+    // --- Upload Image to Firebase Storage ---
     private fun uploadImageToStorage() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val imageUri = selectedImageUri ?: return
 
-        // Show Loading State
         progressBar.visibility = View.VISIBLE
         btnConfirm.isEnabled = false
         btnConfirm.text = "Uploading..."
 
-        // Create a unique filename for the image using userId
         val fileName = "profile_pictures/$userId.jpg"
         val storageRef = FirebaseStorage.getInstance().getReference(fileName)
 
-        // Upload the file
         storageRef.putFile(imageUri)
             .addOnSuccessListener {
-                // Image uploaded successfully, now get the download URL
                 storageRef.downloadUrl.addOnSuccessListener { uri ->
                     val downloadUrl = uri.toString()
-                    // Pass the URL to the Firestore save function
                     saveProfileToFirestore(downloadUrl)
                 }
             }
             .addOnFailureListener { e ->
-                // Handle Error
                 progressBar.visibility = View.GONE
                 btnConfirm.isEnabled = true
                 btnConfirm.text = "Confirm"
@@ -217,12 +207,16 @@ class ProfileDetails : AppCompatActivity() {
             }
     }
 
-    // --- UPDATED: Accepts imageUrl string now ---
+    // --- Save Profile Data (Gender & InterestedIn as Arrays) ---
     private fun saveProfileToFirestore(imageUrl: String) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val db = FirebaseFirestore.getInstance()
 
         val distanceVal = edtDistance.text.toString().toIntOrNull() ?: 0
+
+        // Get strings from EditText
+        val genderString = edtGender.text.toString()
+        val interestedInString = edtInterestedIn.text.toString()
 
         val preferencesMap = mapOf(
             "age_range" to edtAgeRange.text.toString(),
@@ -234,26 +228,27 @@ class ProfileDetails : AppCompatActivity() {
             "mobile" to edtMobile.text.toString(),
             "location" to edtLocation.text.toString(),
             "birthday" to edtBirthday.text.toString(),
-            "gender" to edtGender.text.toString(),
+
+            // --- CHANGED: Wrapped in listOf() to save as Array ---
+            "gender" to listOf(genderString),
+            "interested_in" to listOf(interestedInString),
+
             "bio" to edtBio.text.toString(),
-            "interested_in" to edtInterestedIn.text.toString(),
             "preferences" to preferencesMap,
             "match_percent" to 0,
-            "photos" to emptyList<String>(), // Independent photos list
-            "profile_picture" to imageUrl,     // Independent profile picture URL
+            "photos" to emptyList<String>(),
+            "profile_picture" to imageUrl,
             "profile_completed" to false
         )
 
         db.collection("tbl_users").document(userId).set(profileUpdates, SetOptions.merge())
             .addOnSuccessListener {
-                // Stop Loading
                 progressBar.visibility = View.GONE
                 btnConfirm.isEnabled = true
 
-                // Navigate to Passions (No "Completed" Toast here, per your request)
                 val intent = Intent(this, Passions::class.java)
                 startActivity(intent)
-                // Note: No finish() here, allowing Undo from next screen
+                // Activity remains open for "Undo" functionality
             }
             .addOnFailureListener { e ->
                 progressBar.visibility = View.GONE
@@ -266,7 +261,6 @@ class ProfileDetails : AppCompatActivity() {
     private fun setupNavigation() {
         btnConfirm.setOnClickListener {
             if (validateInputs()) {
-                // Start the chain: Upload -> GetUrl -> SaveData -> Navigate
                 uploadImageToStorage()
             } else {
                 Toast.makeText(this, "Please fill all required fields", Toast.LENGTH_SHORT).show()
