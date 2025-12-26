@@ -53,6 +53,13 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
             startActivity(intent)
         }
 
+        val btnMainProfile: ImageButton = findViewById(R.id.btnMainProfile)
+        btnMainProfile.setOnClickListener {
+            val intent = Intent(this, ProfilePage::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            startActivity(intent)
+        }
+
         // CardStackView Setup
         cardStackView = findViewById(R.id.cardStackView)
         manager = CardStackLayoutManager(this, this)

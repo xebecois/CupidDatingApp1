@@ -1,5 +1,6 @@
 package com.example.cupiddating
 
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
@@ -36,6 +37,21 @@ class ProfilePage : AppCompatActivity() {
         btnEdit.setOnClickListener {
             val editSheet = layoutEditProfile()
             editSheet.show(supportFragmentManager, "layoutEditProfile")
+        }
+
+        val btnMatches: ImageButton = findViewById(R.id.btnMatches)
+        btnMatches.setOnClickListener {
+            val intent = Intent(this, MatchesPage::class.java)
+            // This flag brings the existing MatchesPage to front if it exists, preserving its state
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            startActivity(intent)
+        }
+
+        val btnHome: ImageButton = findViewById(R.id.btnHome)
+        btnHome.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            startActivity(intent)
         }
 
     }

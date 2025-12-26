@@ -310,7 +310,8 @@
                     android:scaleType="fitCenter"
                     android:scaleX="1.5"
                     android:scaleY="1.5"
-                    app:srcCompat="@drawable/matches_red"
+                    android:visibility="visible"
+                    app:srcCompat="@drawable/matches_gray"
                     tools:srcCompat="@drawable/matches_gray" />
             </LinearLayout>
 
