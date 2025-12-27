@@ -79,13 +79,6 @@ class ProfilePage : AppCompatActivity() {
             startActivity(intent)
         }
 
-        val btnMessage: ImageButton = findViewById(R.id.btnMessages)
-        btnMessage.setOnClickListener {
-            val intent = Intent(this, MessagingPage::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            startActivity(intent)
-        }
-
         // Inside onCreate, after other button setups:
         val btnLogout = findViewById<Button>(R.id.logout)
         btnLogout.setOnClickListener {
