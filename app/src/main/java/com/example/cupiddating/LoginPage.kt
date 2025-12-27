@@ -15,6 +15,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginPage : AppCompatActivity() {
@@ -83,21 +84,42 @@ class LoginPage : AppCompatActivity() {
                 auth.signInWithCredential(credential)
                     .addOnSuccessListener{
                         val userid = auth.currentUser!!.uid
-                        val email = auth.currentUser!!.email
-                        val name = auth.currentUser!!.displayName
+                        val docRef = con.collection("tbl_users").document(userid)
 
-                        val values = mapOf(
-                            "name" to name,
-                            "email" to email,
-                            "profile_completed" to false
-                        )
+                        // Check if user exists before overwriting to preserve profile_completed status
+                        docRef.get().addOnSuccessListener { document ->
+                            if (document.exists()) {
+                                // EXISTING USER: Update login timestamp only
+                                docRef.update("last_login", FieldValue.serverTimestamp())
 
-                        con.collection("tbl_users").document(userid).set(values)
-                            .addOnSuccessListener{
-                                Toast.makeText(this, "Login Successful",Toast.LENGTH_SHORT).show()
-                                val intent = Intent(this, MainActivity::class.java)
-                                startActivity(intent)
+                                val isComplete = document.getBoolean("profile_completed") ?: false
+                                if (isComplete) {
+                                    Toast.makeText(this, "Login Successful", Toast.LENGTH_SHORT).show()
+                                    startActivity(Intent(this, MainActivity::class.java))
+                                } else {
+                                    startActivity(Intent(this, ProfileDetails::class.java))
+                                }
+                                finish()
+                            } else {
+                                // NEW USER (via Google): Create minimal record
+                                val email = auth.currentUser!!.email
+                                val name = auth.currentUser!!.displayName
+
+                                val values = hashMapOf(
+                                    "name" to name,
+                                    "email" to email,
+                                    "profile_completed" to false,
+                                    "created_at" to FieldValue.serverTimestamp(),
+                                    "last_login" to FieldValue.serverTimestamp()
+                                )
+
+                                docRef.set(values).addOnSuccessListener{
+                                    Toast.makeText(this, "Login Successful", Toast.LENGTH_SHORT).show()
+                                    startActivity(Intent(this, ProfileDetails::class.java)) // New users go to setup
+                                    finish()
+                                }
                             }
+                        }
                     }
 
             } catch (e: Exception) {
@@ -124,9 +146,14 @@ class LoginPage : AppCompatActivity() {
             auth.signInWithEmailAndPassword(email, password).addOnSuccessListener {
                 val userId = auth.currentUser?.uid
                 if (userId != null) {
-                    // Look up the user in Firestore to see if they finished their profile
+
+                    // NEW: Update Last Login Timestamp
                     val db = FirebaseFirestore.getInstance()
-                    db.collection("tbl_users").document(userId).get()
+                    val userRef = db.collection("tbl_users").document(userId)
+                    userRef.update("last_login", FieldValue.serverTimestamp())
+
+                    // Look up the user in Firestore to see if they finished their profile
+                    userRef.get()
                         .addOnSuccessListener { document ->
                             val isComplete = document.getBoolean("profile_completed") ?: false
 

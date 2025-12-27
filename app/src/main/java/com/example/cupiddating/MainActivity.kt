@@ -232,7 +232,7 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
 
     private fun calculateAgeFromString(dateString: String): Int {
         if (dateString.isEmpty()) return 18
-        val format = SimpleDateFormat("M/d/yyyy", Locale.US)
+        val format = SimpleDateFormat("MM/dd/yyyy", Locale.US)
         return try {
             val date = format.parse(dateString) ?: return 18
             val dob = Calendar.getInstance()

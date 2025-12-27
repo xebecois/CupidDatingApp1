@@ -1,3 +1,5 @@
+// SignUpPage.kt
+
 package com.example.cupiddating
 
 import android.content.Intent
@@ -15,6 +17,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class SignUpPage : AppCompatActivity() {
@@ -73,7 +76,8 @@ class SignUpPage : AppCompatActivity() {
                                 val email = auth.currentUser?.email ?: ""
                                 saveUserWithSequentialId(userId, email, name)
                             } else {
-                                // User exists, just login
+                                // User exists, just login (and update login time)
+                                docRef.update("last_login", FieldValue.serverTimestamp())
                                 startActivity(Intent(this, MainActivity::class.java))
                                 finish()
                             }
@@ -139,7 +143,9 @@ class SignUpPage : AppCompatActivity() {
                     "user_id" to formattedUserId,   // The custom sequential ID
                     "email" to email,
                     "profile_completed" to false,
-                    "role" to "user"
+                    "role" to "user",
+                    "created_at" to FieldValue.serverTimestamp(), // NEW: Creation timestamp
+                    "last_login" to FieldValue.serverTimestamp()  // NEW: Initial login timestamp
                 )
                 // Add name only if it exists (for Google Sign Up)
                 if (name != null) {

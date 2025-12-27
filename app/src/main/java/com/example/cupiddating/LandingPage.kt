@@ -40,8 +40,8 @@ class LandingPage : AppCompatActivity() {
             val lastSignInTime = currentUser.metadata?.lastSignInTimestamp ?: 0L
             val currentTime = System.currentTimeMillis()
 
-            // 24 hours in milliseconds = 24 * 60 * 60 * 1000 = 86,400,000
-            val sessionTimeout = 24 * 60 * 60 * 1000L
+            // 12 hours in milliseconds = 12 * 60 * 60 * 1000 = 43,200,000
+            val sessionTimeout = 12 * 60 * 60 * 1000L
 
             if (currentTime - lastSignInTime > sessionTimeout) {
                 // Session Expired: Force logout
