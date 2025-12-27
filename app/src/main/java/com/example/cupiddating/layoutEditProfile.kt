@@ -112,7 +112,7 @@ class layoutEditProfile : BottomSheetDialogFragment() {
                 else -> "Female"
             }
 
-            val updates = hashMapOf(
+            val updates = hashMapOf<String, Any>(
                 "bio" to editBio.text.toString(),
                 "location" to editLocation.text.toString(),
                 "mobile" to editMobile.text.toString(),
@@ -123,11 +123,15 @@ class layoutEditProfile : BottomSheetDialogFragment() {
 
             userId?.let { id ->
                 db.collection("tbl_users").document(id)
-                    .set(updates, SetOptions.merge())
+                    // CHANGE THIS LINE: Use .update() instead of .set()
+                    .update(updates)
                     .addOnSuccessListener {
                         Toast.makeText(requireContext(), "Profile updated!", Toast.LENGTH_SHORT).show()
                         (activity as? ProfilePage)?.loadUserProfile()
                         dismiss()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(requireContext(), "Update failed: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
             }
         }

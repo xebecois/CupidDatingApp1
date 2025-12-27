@@ -18,6 +18,8 @@ class ProfilePage : AppCompatActivity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var storage: FirebaseStorage
     private lateinit var googleSignInClient: com.google.android.gms.auth.api.signin.GoogleSignInClient
+    private lateinit var ivProfile: ImageView
+    private val PICK_IMAGE_REQUEST = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +33,14 @@ class ProfilePage : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
         storage = FirebaseStorage.getInstance()
+        ivProfile = findViewById(R.id.profileImage)
+        ivProfile.setOnClickListener {
+            val intent = Intent()
+            intent.type = "image/*"
+            intent.action = Intent.ACTION_GET_CONTENT
+            startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST)
+        }
+
         setupWindowInsets()
         loadUserProfile()
 
@@ -58,6 +68,13 @@ class ProfilePage : AppCompatActivity() {
         btnMatches.setOnClickListener {
             val intent = Intent(this, MatchesPage::class.java)
             // This flag brings the existing MatchesPage to front if it exists, preserving its state
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            startActivity(intent)
+        }
+
+        val btnMessage: ImageButton = findViewById(R.id.btnMessages)
+        btnMessage.setOnClickListener {
+            val intent = Intent(this, MessagingPage::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         }
@@ -174,6 +191,43 @@ class ProfilePage : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
             0
+        }
+    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null && data.data != null) {
+            val imageUri = data.data
+            ivProfile.setImageURI(imageUri) // Preview the image
+            uploadImageToFirebase(imageUri) // Upload to Firebase
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadUserProfile()
+    }
+
+    private fun uploadImageToFirebase(imageUri: android.net.Uri?) {
+        val userId = auth.currentUser?.uid ?: return
+        val storageRef = storage.reference.child("profile_images/$userId.jpg")
+
+        imageUri?.let { uri ->
+            storageRef.putFile(uri).addOnSuccessListener {
+                // Get the Download URL from Storage
+                storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                    val newImageUrl = downloadUri.toString()
+
+                    // Save this URL to Firestore immediately
+                    db.collection("tbl_users").document(userId)
+                        .update("profile_picture", newImageUrl)
+                        .addOnSuccessListener {
+                            Toast.makeText(this, "Image saved to database!", Toast.LENGTH_SHORT).show()
+                            loadUserProfile() // Refresh the main profile view
+                        }
+                }
+            }.addOnFailureListener { e ->
+                Toast.makeText(this, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
