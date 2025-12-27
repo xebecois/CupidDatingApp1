@@ -37,6 +37,26 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     // because both perform a "Right Swipe" visually.
     private var isSuperLikeBtnClicked: Boolean = false
 
+    // Logged User's Interests/Passions
+    private var myPassionsList: ArrayList<String> = arrayListOf()
+
+    // Register a launcher to handle the return data from ProfileDetailsActivity
+    private val detailsLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val action = result.data?.getStringExtra("ACTION")
+            when (action) {
+                "LIKE" -> autoSwipe(Direction.Right)
+                "PASS" -> autoSwipe(Direction.Left)
+                "SUPERLIKE" -> {
+                    isSuperLikeBtnClicked = true // Set your flag if you use one
+                    autoSwipe(Direction.Right)
+                }
+            }
+        }
+    }
+
     // Stack to track if the last swipe resulted in a DB write (Like/SuperLike) or not (Pass)
     // true = DB write occurred (need to delete), false = No DB write (just rewind)
     private val actionHistory = Stack<Boolean>()
@@ -142,7 +162,10 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
                 val myLocation = myDoc.getString("location") ?: ""
                 val myPassions = (myDoc.get("passions") as? List<String>) ?: emptyList()
 
-                // 2. Get list of people I already interacted with using Custom IDs
+                // Save MY passions to the class variable (convert to ArrayList)
+                myPassionsList = ArrayList(myPassions)
+
+                // 2. Get list of interactions
                 db.collection("tbl_matches")
                     .whereEqualTo("liker_user_id", myRealIdField)
                     .get()
@@ -176,7 +199,19 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
                                 val name = document.getString("name") ?: "Unknown"
                                 val birthdayString = document.getString("birthday") ?: ""
                                 val location = document.getString("location") ?: "No Location"
+                                val bio = document.getString("bio") ?: "No bio available"
+
+                                val preferences = document.get("preferences") as? Map<String, Any>
+                                val distanceLong = preferences?.get("distance") as? Long ?: 0L
+                                val distance = distanceLong.toInt()
+
                                 val profilePicture = document.getString("profile_picture") ?: ""
+                                val galleryImages = (document.get("photos") as? List<String>) ?: emptyList()
+
+                                val allImages = ArrayList<String>()
+                                if (profilePicture.isNotEmpty()) { allImages.add(profilePicture) }
+                                allImages.addAll(galleryImages)
+
                                 val theirPassions = (document.get("passions") as? List<String>) ?: emptyList()
                                 val calculatedAge = calculateAgeFromString(birthdayString)
 
@@ -193,8 +228,10 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
                                             calculatedAge,
                                             location,
                                             dynamicMatchPercent,
-                                            listOf(profilePicture),
-                                            theirPassions
+                                            allImages,
+                                            theirPassions,
+                                            bio,
+                                            distance
                                         )
                                     )
                                 }
@@ -202,6 +239,24 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
 
                             usersList.sortByDescending { it.matchPercent }
                             adapter.setUsers(usersList)
+
+                            // Define what happens when a card is clicked
+                            adapter.onCardClick = { user ->
+                                val intent = Intent(this, MainProfileDetailsActivity::class.java)
+                                intent.putExtra("userId", user.userId)
+                                intent.putExtra("name", user.name)
+                                intent.putExtra("age", user.age)
+                                intent.putExtra("location", user.location)
+                                intent.putExtra("bio", user.bio)
+                                intent.putExtra("distance", user.distance)
+                                intent.putStringArrayListExtra("passions", ArrayList(user.passions))
+                                intent.putStringArrayListExtra("images", ArrayList(user.images))
+                                // Pass MY passions so we can highlight matches
+                                intent.putStringArrayListExtra("myPassions", myPassionsList)
+
+                                // Launch using the new launcher
+                                detailsLauncher.launch(intent)
+                            }
 
                             if (usersList.isEmpty()) {
                                 cardStackView.visibility = View.GONE
@@ -237,6 +292,17 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
             isSuperLikeBtnClicked = true
             performSwipe(Direction.Right)
         }
+    }
+
+    // Helper to trigger swipe programmatically
+    private fun autoSwipe(direction: Direction) {
+        val setting = SwipeAnimationSetting.Builder()
+            .setDirection(direction)
+            .setDuration(Duration.Normal.duration)
+            .setInterpolator(AccelerateInterpolator())
+            .build()
+        manager.setSwipeAnimationSetting(setting)
+        cardStackView.swipe()
     }
 
     // Helper to perform swipe with animation settings

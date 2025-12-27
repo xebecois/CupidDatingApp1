@@ -133,7 +133,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
-                                android:text="1 km"
+                                android:text="25 km"
                                 android:textColor="#E94057"
                                 android:textSize="18sp"
                                 android:textStyle="bold" />
@@ -183,18 +183,14 @@
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
-                <HorizontalScrollView
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/cg_detail_interests_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:scrollbars="none">
-
-                    <LinearLayout
-                        android:id="@+id/ll_detail_interests_container"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"></LinearLayout>
-                </HorizontalScrollView>
+                    app:chipSpacing="8dp"
+                    app:singleLine="false">
+                </com.google.android.material.chip.ChipGroup>
 
                 <View
                     android:id="@+id/detailView3"
@@ -234,6 +230,14 @@
                         android:textSize="16sp"
                         android:textStyle="bold" />
                 </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_gallery_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="15dp"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never" />
 
                 <View android:layout_width="match_parent" android:layout_height="50dp"/>
 

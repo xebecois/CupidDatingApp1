@@ -21,7 +21,8 @@ data class DatingUser(
     val matchPercent: Int,
     val images: List<String>,
     val passions: List<String> = emptyList(),
-    val bio: String = "" // Added Bio for details page
+    val bio: String = "",
+    val distance: Int = 0
 )
 
 // 2. Adapter
@@ -29,7 +30,7 @@ class CardStackAdapter(
     private var users: List<DatingUser> = emptyList()
 ) : RecyclerView.Adapter<CardStackAdapter.ViewHolder>() {
 
-    // --- Added Click Listener Interface ---
+    // Listener for card clicks
     var onCardClick: ((DatingUser) -> Unit)? = null
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -52,11 +53,11 @@ class CardStackAdapter(
         holder.tvLocation.text = user.location
         holder.tvMatch.text = "${user.matchPercent}% Match"
 
-        // Set up Inner Image Adapter for ViewPager2
-        val imageAdapter = InnerImageAdapter(user.images)
+        // --- FIX: Pass the 'user' object to the Inner Adapter ---
+        val imageAdapter = InnerImageAdapter(user.images, user)
         holder.viewPager.adapter = imageAdapter
 
-        // --- Set Click Listener on the Item View ---
+        // Keep this for clicks on the text/overlay areas
         holder.itemView.setOnClickListener {
             onCardClick?.invoke(user)
         }
@@ -73,9 +74,12 @@ class CardStackAdapter(
         return if (position in users.indices) users[position] else null
     }
 
-    // --- Inner Adapter for the Images ---
-    inner class InnerImageAdapter(private val imageUrls: List<String>) :
-        RecyclerView.Adapter<InnerImageAdapter.ImageViewHolder>() {
+    // --- Inner Adapter for the Images (Slider) ---
+    // Update: Now accepts 'user: DatingUser' so we can handle clicks
+    inner class InnerImageAdapter(
+        private val imageUrls: List<String>,
+        private val user: DatingUser
+    ) : RecyclerView.Adapter<InnerImageAdapter.ImageViewHolder>() {
 
         inner class ImageViewHolder(val imageView: ImageView) : RecyclerView.ViewHolder(imageView)
 
@@ -90,13 +94,18 @@ class CardStackAdapter(
         }
 
         override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-            // --- LAZY LOADING & OPTIMIZATION APPLIED HERE ---
             Glide.with(holder.itemView.context)
                 .load(imageUrls[position])
-                .diskCacheStrategy(DiskCacheStrategy.ALL) // Cache image to disk (Lazy Load optimization)
-                .thumbnail(0.1f) // Load a low-quality version immediately
-                .placeholder(android.R.color.darker_gray) // Show gray while loading
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .thumbnail(0.1f)
+                .placeholder(android.R.color.darker_gray)
                 .into(holder.imageView)
+
+            // --- CRITICAL FIX ---
+            // Trigger the main listener when the IMAGE itself is clicked
+            holder.itemView.setOnClickListener {
+                this@CardStackAdapter.onCardClick?.invoke(user)
+            }
         }
 
         override fun getItemCount(): Int = imageUrls.size
