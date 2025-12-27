@@ -1,15 +1,13 @@
-// LoginPage.kt
-
 package com.example.cupiddating
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.*
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import android.widget.*
-import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -19,167 +17,90 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginPage : AppCompatActivity() {
-    private fun checkProfileStatus(userId: String) {
-        val db = FirebaseFirestore.getInstance()
-        db.collection("tbl_users").document(userId).get()
-            .addOnSuccessListener { document ->
-                val completed = document.getBoolean("profile_completed") ?: false
 
-                if (completed) {
-                    startActivity(Intent(this, MainActivity::class.java))
-                } else {
-                    startActivity(Intent(this, ProfileDetails::class.java))
-                }
-                finish()
-            }
-    }
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_login_page)
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
-
         }
-        // widget variables
-        val edt_loginEmail : EditText = findViewById(R.id.edt_loginEmail)
-        val edt_loginPass : EditText = findViewById(R.id.edt_loginPass)
-        val btn_emailLogin : Button = findViewById(R.id.btn_emailLogin)
-        val btn_googleLogin : Button = findViewById(R.id.btn_googleLogin)
-        val btn_isSignUp : Button = findViewById(R.id.btn_isSignUp)
 
-        //start connection with auth
-        val auth = FirebaseAuth.getInstance()
-        val con = FirebaseFirestore.getInstance()
+        val edtEmail: EditText = findViewById(R.id.edt_loginEmail)
+        val edtPass: EditText = findViewById(R.id.edt_loginPass)
+        val btnEmailLogin: Button = findViewById(R.id.btn_emailLogin)
+        val btnGoogleLogin: Button = findViewById(R.id.btn_googleLogin)
+        val btnSignUp: Button = findViewById(R.id.btn_isSignUp)
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))  // Web client ID
+            .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
-
-        // Creates Google Sign-In client using the above settings
         val googleClient = GoogleSignIn.getClient(this, gso)
 
-        // --------------------------------------------------------------
-        // STEP 2 — Activity Result Launcher (handles result of Google Sign In)
-        // This replaces deprecated onActivityResult()
-        // --------------------------------------------------------------
-        val googleLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-        ) { result ->
-
-            // Google returns an intent → convert to task
+        val googleLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-
             try {
-                // STEP 3 — Get the Google Account (may throw ApiException)
                 val account = task.getResult(ApiException::class.java)
-
-                // STEP 4 — Convert Google account to Firebase credential
                 val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-
-                auth.signInWithCredential(credential)
-                    .addOnSuccessListener{
-                        val userid = auth.currentUser!!.uid
-                        val docRef = con.collection("tbl_users").document(userid)
-
-                        // Check if user exists before overwriting to preserve profile_completed status
-                        docRef.get().addOnSuccessListener { document ->
-                            if (document.exists()) {
-                                // EXISTING USER: Update login timestamp only
-                                docRef.update("last_login", FieldValue.serverTimestamp())
-
-                                val isComplete = document.getBoolean("profile_completed") ?: false
-                                if (isComplete) {
-                                    Toast.makeText(this, "Login Successful", Toast.LENGTH_SHORT).show()
-                                    startActivity(Intent(this, MainActivity::class.java))
-                                } else {
-                                    startActivity(Intent(this, ProfileDetails::class.java))
-                                }
-                                finish()
-                            } else {
-                                // NEW USER (via Google): Create minimal record
-                                val email = auth.currentUser!!.email
-                                val name = auth.currentUser!!.displayName
-
-                                val values = hashMapOf(
-                                    "name" to name,
-                                    "email" to email,
-                                    "profile_completed" to false,
-                                    "created_at" to FieldValue.serverTimestamp(),
-                                    "last_login" to FieldValue.serverTimestamp()
-                                )
-
-                                docRef.set(values).addOnSuccessListener{
-                                    Toast.makeText(this, "Login Successful", Toast.LENGTH_SHORT).show()
-                                    startActivity(Intent(this, ProfileDetails::class.java)) // New users go to setup
-                                    finish()
-                                }
-                            }
-                        }
-                    }
-
+                auth.signInWithCredential(credential).addOnSuccessListener { handleUserRedirection() }
             } catch (e: Exception) {
                 Toast.makeText(this, "Google Login Failed", Toast.LENGTH_SHORT).show()
             }
         }
-        // --------------------------------------------------------------
-        // STEP 8 — When Google button is clicked → launch Google Sign-In
-        // --------------------------------------------------------------
-        btn_googleLogin.setOnClickListener {
-            googleLauncher.launch(googleClient.signInIntent)
-        }
 
-        // Email and Password Login
-        btn_emailLogin.setOnClickListener {
-            val email = edt_loginEmail.text.toString()
-            val password = edt_loginPass.text.toString()
+        btnGoogleLogin.setOnClickListener { googleLauncher.launch(googleClient.signInIntent) }
+
+        btnEmailLogin.setOnClickListener {
+            val email = edtEmail.text.toString().trim()
+            val password = edtPass.text.toString().trim()
 
             if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Please enter credentials", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            auth.signInWithEmailAndPassword(email, password).addOnSuccessListener {
-                val userId = auth.currentUser?.uid
-                if (userId != null) {
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnSuccessListener { handleUserRedirection() }
+                .addOnFailureListener { Toast.makeText(this, "Authentication Failed", Toast.LENGTH_SHORT).show() }
+        }
 
-                    // NEW: Update Last Login Timestamp
-                    val db = FirebaseFirestore.getInstance()
-                    val userRef = db.collection("tbl_users").document(userId)
-                    userRef.update("last_login", FieldValue.serverTimestamp())
+        btnSignUp.setOnClickListener {
+            startActivity(Intent(this, SignUpPage::class.java))
+        }
+    }
 
-                    // Look up the user in Firestore to see if they finished their profile
-                    userRef.get()
-                        .addOnSuccessListener { document ->
-                            val isComplete = document.getBoolean("profile_completed") ?: false
+    private fun handleUserRedirection() {
+        val user = auth.currentUser ?: return
+        val docRef = db.collection("tbl_users").document(user.uid)
 
-                            if (isComplete) {
-                                // RETURNING USER: Go straight to Home
-                                Toast.makeText(this, "Login Success", Toast.LENGTH_SHORT).show()
-                                val intent = Intent(this, MainActivity::class.java)
-                                startActivity(intent)
-                            } else {
-                                // NEW/INCOMPLETE USER: Go to Setup
-                                val intent = Intent(this, ProfileDetails::class.java)
-                                startActivity(intent)
-                            }
-                            finish()
-                        }
-                        .addOnFailureListener {
-                            // If check fails, default to ProfileDetails to be safe
-                            startActivity(Intent(this, ProfileDetails::class.java))
-                            finish()
-                        }
-                }
+        docRef.get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                docRef.update("last_login", FieldValue.serverTimestamp())
+                val isComplete = document.getBoolean("profile_completed") ?: false
+                navigate(if (isComplete) MainActivity::class.java else ProfileDetails::class.java)
+            } else {
+                val values = hashMapOf(
+                    "name" to user.displayName,
+                    "email" to user.email,
+                    "profile_completed" to false,
+                    "created_at" to FieldValue.serverTimestamp(),
+                    "last_login" to FieldValue.serverTimestamp()
+                )
+                docRef.set(values).addOnSuccessListener { navigate(ProfileDetails::class.java) }
             }
         }
-        btn_isSignUp.setOnClickListener {
-            val intent = Intent(this, SignUpPage::class.java)
-            startActivity(intent)
-        }
+    }
+
+    private fun navigate(target: Class<*>) {
+        Toast.makeText(this, "Login Successful", Toast.LENGTH_SHORT).show()
+        startActivity(Intent(this, target))
+        finish()
     }
 }
