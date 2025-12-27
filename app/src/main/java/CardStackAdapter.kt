@@ -1,8 +1,12 @@
+// CardStackAdapter.kt
+
 package com.example.cupiddating
 
 import android.view.LayoutInflater
-import android.view.*
-import android.widget.*
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
@@ -16,13 +20,17 @@ data class DatingUser(
     val location: String,
     val matchPercent: Int,
     val images: List<String>,
-    val passions: List<String> = emptyList()
+    val passions: List<String> = emptyList(),
+    val bio: String = "" // Added Bio for details page
 )
 
 // 2. Adapter
 class CardStackAdapter(
     private var users: List<DatingUser> = emptyList()
 ) : RecyclerView.Adapter<CardStackAdapter.ViewHolder>() {
+
+    // --- Added Click Listener Interface ---
+    var onCardClick: ((DatingUser) -> Unit)? = null
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvNameAge: TextView = view.findViewById(R.id.tv_userNameAge)
@@ -44,8 +52,13 @@ class CardStackAdapter(
         holder.tvLocation.text = user.location
         holder.tvMatch.text = "${user.matchPercent}% Match"
 
-        if (user.images.isNotEmpty()) {
-            holder.viewPager.adapter = InnerImageAdapter(user.images)
+        // Set up Inner Image Adapter for ViewPager2
+        val imageAdapter = InnerImageAdapter(user.images)
+        holder.viewPager.adapter = imageAdapter
+
+        // --- Set Click Listener on the Item View ---
+        holder.itemView.setOnClickListener {
+            onCardClick?.invoke(user)
         }
     }
 
@@ -56,7 +69,6 @@ class CardStackAdapter(
         notifyDataSetChanged()
     }
 
-    // --- Helper function to get the user object by position ---
     fun getUser(position: Int): DatingUser? {
         return if (position in users.indices) users[position] else null
     }

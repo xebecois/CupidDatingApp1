@@ -2,7 +2,10 @@
 
 package com.example.cupiddating
 
-import android.content.Intent
+import android.app.AlertDialog
+import android.content.*
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.View
 import android.view.animation.AccelerateInterpolator
@@ -29,6 +32,15 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     private var currentMinAge: Int = 18
     private var currentMaxAge: Int = 80
 
+    // --- STATE TRACKING ---
+    // Flag to distinguish between a Normal Like button click and a SuperLike button click
+    // because both perform a "Right Swipe" visually.
+    private var isSuperLikeBtnClicked: Boolean = false
+
+    // Stack to track if the last swipe resulted in a DB write (Like/SuperLike) or not (Pass)
+    // true = DB write occurred (need to delete), false = No DB write (just rewind)
+    private val actionHistory = Stack<Boolean>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -40,6 +52,12 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
             insets
         }
 
+        // --- UNDO BUTTON LOGIC ---
+        val btnUndoMain = findViewById<ImageButton>(R.id.btnUndo_main)
+        btnUndoMain.setOnClickListener {
+            undoLastAction()
+        }
+
         // --- BOTTOM NAVBAR ACTION BUTTONS ---
         val btnFilter = findViewById<ImageButton>(R.id.btnFilter)
         btnFilter.setOnClickListener {
@@ -47,22 +65,22 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
             filterSheet.show(supportFragmentManager, "FilterBottomSheet")
         }
 
-        val btnMainMatches: ImageButton = findViewById(R.id.btnMainMatches)
-        btnMainMatches.setOnClickListener {
+        val btnMatches: ImageButton = findViewById(R.id.btnMainMatches)
+        btnMatches.setOnClickListener {
             val intent = Intent(this, MatchesPage::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         }
 
-        val btnMainProfile: ImageButton = findViewById(R.id.btnMainProfile)
-        btnMainProfile.setOnClickListener {
+        val btnProfile: ImageButton = findViewById(R.id.btnMainProfile)
+        btnProfile.setOnClickListener {
             val intent = Intent(this, ProfilePage::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         }
 
-        val btnMainMessage: ImageButton = findViewById(R.id.btnMainMessages)
-        btnMainMessage.setOnClickListener {
+        val btnMessage: ImageButton = findViewById(R.id.btnMainMessages)
+        btnMessage.setOnClickListener {
             val intent = Intent(this, MessagingPage::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
@@ -77,9 +95,11 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         manager.setScaleInterval(0.95f)
         manager.setSwipeThreshold(0.3f)
         manager.setMaxDegree(20.0f)
-        manager.setDirections(Direction.HORIZONTAL) // Note: Enable VERTICAL if you want Up swipe for Superlike
+
+        // Setting direction to HORIZONTAL allows Left (Pass) and Right (Like/Superlike)
+        manager.setDirections(Direction.HORIZONTAL)
         manager.setCanScrollHorizontal(true)
-        manager.setCanScrollVertical(true) // Enabled for potential Superlike
+        manager.setCanScrollVertical(false)
 
         cardStackView.layoutManager = manager
         adapter = CardStackAdapter()
@@ -198,25 +218,81 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     private fun setupButtons() {
         val btnPass = findViewById<ImageButton>(R.id.btn_pass)
         val btnLike = findViewById<ImageButton>(R.id.btn_like)
+        val btnSuperLike = findViewById<ImageButton>(R.id.btn_superLike)
 
         btnPass.setOnClickListener {
-            val setting = SwipeAnimationSetting.Builder()
-                .setDirection(Direction.Left)
-                .setDuration(Duration.Normal.duration)
-                .setInterpolator(AccelerateInterpolator())
-                .build()
-            manager.setSwipeAnimationSetting(setting)
-            cardStackView.swipe()
+            // Logic: Left Swipe -> Pass
+            performSwipe(Direction.Left)
         }
 
         btnLike.setOnClickListener {
-            val setting = SwipeAnimationSetting.Builder()
-                .setDirection(Direction.Right)
-                .setDuration(Duration.Normal.duration)
-                .setInterpolator(AccelerateInterpolator())
-                .build()
-            manager.setSwipeAnimationSetting(setting)
-            cardStackView.swipe()
+            // Logic: Right Swipe, NO flag -> Normal Like
+            isSuperLikeBtnClicked = false
+            performSwipe(Direction.Right)
+        }
+
+        btnSuperLike.setOnClickListener {
+            // Logic: Right Swipe, WITH flag -> SuperLike
+            // We set the flag here, so onCardSwiped knows it's special
+            isSuperLikeBtnClicked = true
+            performSwipe(Direction.Right)
+        }
+    }
+
+    // Helper to perform swipe with animation settings
+    private fun performSwipe(direction: Direction) {
+        val setting = SwipeAnimationSetting.Builder()
+            .setDirection(direction)
+            .setDuration(Duration.Normal.duration)
+            .setInterpolator(AccelerateInterpolator())
+            .build()
+        manager.setSwipeAnimationSetting(setting)
+        cardStackView.swipe()
+    }
+
+    // --- UNDO IMPLEMENTATION ---
+    private fun undoLastAction() {
+        // 1. Visual Rewind (Library function)
+        cardStackView.rewind()
+
+        // 2. Logic Rewind (Database)
+        if (actionHistory.isNotEmpty()) {
+            val wasDbWrite = actionHistory.pop()
+
+            // If the last action saved to DB (Like/SuperLike), we must delete it
+            if (wasDbWrite) {
+                deleteLastMatchFromFirestore()
+            } else {
+                Toast.makeText(this, "Rewind (Pass undone)", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun deleteLastMatchFromFirestore() {
+        val db = FirebaseFirestore.getInstance()
+        val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
+            val myCustomId = myDoc.getString("user_id") ?: return@addOnSuccessListener
+
+            // Query specifically for the MOST RECENT match created by THIS user
+            db.collection("tbl_matches")
+                .whereEqualTo("liker_user_id", myCustomId)
+                .orderBy("match_date", Query.Direction.DESCENDING) // Get the latest one
+                .limit(1)
+                .get()
+                .addOnSuccessListener { documents ->
+                    for (document in documents) {
+                        // Delete the document found
+                        db.collection("tbl_matches").document(document.id).delete()
+                            .addOnSuccessListener {
+                                Toast.makeText(this, "Undid Last Match", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(this, "Failed to undo match", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                }
         }
     }
 
@@ -251,23 +327,55 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     // --- CARD SWIPE LISTENERS ---
 
     override fun onCardSwiped(direction: Direction?) {
+        // --- TUTORIAL LOGIC START ---
+        val prefs = getSharedPreferences("CupidPrefs", Context.MODE_PRIVATE)
+        val hasSeenPassTutorial = prefs.getBoolean("seen_pass_tutorial", false)
+        val hasSeenLikeTutorial = prefs.getBoolean("seen_like_tutorial", false)
+
+        // Scenario 1: First time swiping Left (Pass)
+        if (direction == Direction.Left && !hasSeenPassTutorial) {
+            prefs.edit().putBoolean("seen_pass_tutorial", true).apply()
+            cardStackView.rewind()
+            showPassTutorialDialog()
+            return
+        }
+
+        // Scenario 2: First time swiping Right (Like)
+        if (direction == Direction.Right && !hasSeenLikeTutorial) {
+            prefs.edit().putBoolean("seen_like_tutorial", true).apply()
+            cardStackView.rewind()
+            showLikeTutorialDialog()
+            return
+        }
+        // --- TUTORIAL LOGIC END ---
+
+        // Proceed with normal logic if tutorials are already seen
         val position = manager.topPosition - 1
         val swipedUser = adapter.getUser(position)
 
         if (swipedUser != null) {
             when (direction) {
                 Direction.Right -> {
-                    // Normal Like
-                    saveMatchToFirestore(swipedUser, "like")
-                    Toast.makeText(this, "Liked ${swipedUser.name}", Toast.LENGTH_SHORT).show()
-                }
-                Direction.Top -> {
-                    // Super Like
-                    saveMatchToFirestore(swipedUser, "superlike")
-                    Toast.makeText(this, "Super Liked ${swipedUser.name}!", Toast.LENGTH_SHORT).show()
+                    // It can be a "Like" or a "Superlike" depending on which button was clicked
+                    if (isSuperLikeBtnClicked) {
+                        saveMatchToFirestore(swipedUser, "superlike")
+                        Toast.makeText(this, "Super Liked ${swipedUser.name}!", Toast.LENGTH_SHORT).show()
+                        // Reset flag
+                        isSuperLikeBtnClicked = false
+                    } else {
+                        saveMatchToFirestore(swipedUser, "like")
+                        Toast.makeText(this, "Liked ${swipedUser.name}", Toast.LENGTH_SHORT).show()
+                    }
+                    actionHistory.push(true) // Push TRUE because we saved to DB
                 }
                 Direction.Left -> {
                     // Pass (logic omitted for brevity, usually just ignore or save 'pass' to excluded list)
+                    actionHistory.push(false) // Push FALSE because we didn't save to DB
+                }
+                Direction.Top -> {
+                    // Fallback in case manual UP swipe is enabled later
+                    saveMatchToFirestore(swipedUser, "superlike")
+                    actionHistory.push(true)
                 }
                 else -> {}
             }
@@ -279,36 +387,92 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         }
     }
 
+    // --- DIALOG DISPLAY FUNCTIONS ---
+
+    private fun showPassTutorialDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_tutorial_pass, null)
+        val builder = AlertDialog.Builder(this)
+        builder.setView(dialogView)
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val btnCancel = dialogView.findViewById<TextView>(R.id.btn_dialog_cancel)
+        val btnConfirm = dialogView.findViewById<TextView>(R.id.btn_dialog_confirm)
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            performSwipe(Direction.Left)
+        }
+        dialog.show()
+    }
+
+    private fun showLikeTutorialDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_tutorial_like, null)
+        val builder = AlertDialog.Builder(this)
+        builder.setView(dialogView)
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val btnCancel = dialogView.findViewById<TextView>(R.id.btn_dialog_cancel)
+        val btnConfirm = dialogView.findViewById<TextView>(R.id.btn_dialog_confirm)
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            performSwipe(Direction.Right)
+        }
+        dialog.show()
+    }
+
     private fun saveMatchToFirestore(targetUser: DatingUser, interactionType: String) {
         val db = FirebaseFirestore.getInstance()
         val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // 1. Get MY Custom ID (user_005)
+        // 1. Get MY Custom ID
         db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
             val myCustomId = myDoc.getString("user_id") ?: return@addOnSuccessListener
-
-            // The adapter already holds the target's custom ID (user_006)
             val targetCustomId = targetUser.userId
 
-            // 2. Count existing matches to generate "match_010"
-            db.collection("tbl_matches").get().addOnSuccessListener { matchSnapshots ->
-                val nextCount = matchSnapshots.size() + 1
-                val matchId = String.format("match_%03d", nextCount)
+            // 2. TRANSACTIONAL ID GENERATION
+            // We use a counter document to prevent race conditions.
+            val counterRef = db.collection("tbl_counters").document("match_counter")
 
-                // 3. Prepare Data strictly matching your screenshot
+            db.runTransaction { transaction ->
+                val snapshot = transaction.get(counterRef)
+
+                // Initialize if doesn't exist. Start at 9, so next increment is 10
+                val currentCount = if (snapshot.exists()) {
+                    snapshot.getLong("count") ?: 9
+                } else {
+                    9
+                }
+
+                val nextCount = currentCount + 1
+                val newMatchId = String.format("match_%03d", nextCount)
+
+                // Write new count back to counter doc
+                val newData = hashMapOf("count" to nextCount)
+                transaction.set(counterRef, newData)
+
+                // Prepare match data
                 val matchData = hashMapOf(
-                    "match_id" to matchId,
-                    "liker_user_id" to myCustomId,      // e.g. "user_005"
-                    "liked_user_id" to targetCustomId,  // e.g. "user_006"
-                    "type" to listOf(interactionType),  // Array: ["like"] or ["superlike"]
-                    "match_date" to FieldValue.serverTimestamp() // Firestore Timestamp
+                    "match_id" to newMatchId,
+                    "liker_user_id" to myCustomId,
+                    "liked_user_id" to targetCustomId,
+                    "type" to listOf(interactionType),
+                    "match_date" to FieldValue.serverTimestamp()
                 )
 
-                // Save to tbl_matches
-                db.collection("tbl_matches").document(matchId).set(matchData)
-                    .addOnFailureListener {
-                        Toast.makeText(this, "Failed to save match", Toast.LENGTH_SHORT).show()
-                    }
+                // Write the actual match document
+                val matchRef = db.collection("tbl_matches").document(newMatchId)
+                transaction.set(matchRef, matchData)
+
+                // Return null or success flag if needed
+                null
+            }.addOnFailureListener {
+                Toast.makeText(this, "Failed to save match (Transaction)", Toast.LENGTH_SHORT).show()
+                // You might want to rewind the card here in production if saving fails
             }
         }
     }

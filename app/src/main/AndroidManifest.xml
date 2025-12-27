@@ -12,14 +12,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CupidDating">
         <activity
+            android:name=".MainProfileDetailsActivity"
+            android:exported="true" />
+        <activity
             android:name=".LayoutChatDialog"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".ItemMessageRow"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".MessagingPage"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".ProfilePage"
             android:exported="true" />

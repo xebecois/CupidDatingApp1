@@ -196,24 +196,45 @@ class MatchesPage : AppCompatActivity() {
     private fun saveMatchToFirestore(likedCustomId: String, likedName: String) {
         if (myCustomId.isEmpty()) return
 
-        // 1. Count existing matches to generate ID
-        db.collection("tbl_matches").get().addOnSuccessListener { matchSnapshots ->
-            val nextCount = matchSnapshots.size() + 1
-            val matchId = String.format("match_%03d", nextCount)
+        // 1. TRANSACTIONAL ID GENERATION
+        // We use a counter document to prevent race conditions.
+        val counterRef = db.collection("tbl_counters").document("match_counter")
 
-            // 2. Prepare Data (Only "like" for this page)
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(counterRef)
+
+            // Initialize if doesn't exist. Start at 9, so next is 10
+            val currentCount = if (snapshot.exists()) {
+                snapshot.getLong("count") ?: 9
+            } else {
+                9
+            }
+
+            val nextCount = currentCount + 1
+            val newMatchId = String.format("match_%03d", nextCount)
+
+            // Write new count back to counter doc
+            val newData = hashMapOf("count" to nextCount)
+            transaction.set(counterRef, newData)
+
+            // Prepare Data (Only "like" for this page)
             val matchData = hashMapOf(
-                "match_id" to matchId,
+                "match_id" to newMatchId,
                 "liker_user_id" to myCustomId,
                 "liked_user_id" to likedCustomId,
                 "type" to listOf("like"), // Array format
                 "match_date" to FieldValue.serverTimestamp()
             )
 
-            db.collection("tbl_matches").document(matchId).set(matchData)
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Liked $likedName!", Toast.LENGTH_SHORT).show()
-                }
+            // Write the actual match document
+            val matchRef = db.collection("tbl_matches").document(newMatchId)
+            transaction.set(matchRef, matchData)
+
+            null
+        }.addOnSuccessListener {
+            Toast.makeText(this, "Liked $likedName!", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener {
+            Toast.makeText(this, "Failed to save match (Transaction)", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -244,5 +265,4 @@ class MatchesPage : AppCompatActivity() {
             if (age < 0) 0 else age
         } catch (e: Exception) { 18 }
     }
-
 }

@@ -14,10 +14,10 @@
       <SelectionState runConfigName="MatchesPage">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="ProfilePage">
+      <SelectionState runConfigName="ProfileDetails">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="ProfileDetails">
+      <SelectionState runConfigName="MainProfileDetailsActivity">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>
