@@ -1,5 +1,3 @@
-// LayoutEditProfile.kt
-
 package com.example.cupiddating
 
 import android.os.Bundle
@@ -11,7 +9,7 @@ import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
 
-class LayoutEditProfile : BottomSheetDialogFragment() {
+class layoutEditProfile : BottomSheetDialogFragment() {
 
     private val db = FirebaseFirestore.getInstance()
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -98,44 +96,55 @@ class LayoutEditProfile : BottomSheetDialogFragment() {
                 .show()
         }
 
-        // Save Changes Listener
+        // Save Changes Listener with Confirmation
         btnSave.setOnClickListener {
-            val genderSelection = when (toggleGender.checkedButtonId) {
-                R.id.btnMale -> "Male"
-                R.id.btnFemale -> "Female"
-                R.id.btnNonBi -> "Non-Binary"
-                else -> "Male"
-            }
-
-            val interestedInSelection = when (toggleInterestedIn.checkedButtonId) {
-                R.id.btnIntMale -> "Male"
-                R.id.btnIntFemale -> "Female"
-                R.id.btnIntNonBi -> "Non-Binary"
-                else -> "Female"
-            }
-
-            val updates = hashMapOf<String, Any>(
-                "bio" to editBio.text.toString(),
-                "location" to editLocation.text.toString(),
-                "mobile" to editMobile.text.toString(),
-                "gender" to listOf(genderSelection),
-                "interested_in" to listOf(interestedInSelection),
-                "passions" to userSelectedInterests
-            )
-
-            userId?.let { id ->
-                db.collection("tbl_users").document(id)
-                    // CHANGE THIS LINE: Use .update() instead of .set()
-                    .update(updates)
-                    .addOnSuccessListener {
-                        Toast.makeText(requireContext(), "Profile updated!", Toast.LENGTH_SHORT).show()
-                        (activity as? ProfilePage)?.loadUserProfile()
-                        dismiss()
+            AlertDialog.Builder(requireContext())
+                .setTitle("Save Changes")
+                .setMessage("Are you sure you want to save these changes to your profile?")
+                .setPositiveButton("Confirm") { _, _ ->
+                    // EXECUTE THE SAVE LOGIC
+                    val genderSelection = when (toggleGender.checkedButtonId) {
+                        R.id.btnMale -> "Male"
+                        R.id.btnFemale -> "Female"
+                        R.id.btnNonBi -> "Non-Binary"
+                        else -> "Male"
                     }
-                    .addOnFailureListener { e ->
-                        Toast.makeText(requireContext(), "Update failed: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                    val interestedInSelection = when (toggleInterestedIn.checkedButtonId) {
+                        R.id.btnIntMale -> "Male"
+                        R.id.btnIntFemale -> "Female"
+                        R.id.btnIntNonBi -> "Non-Binary"
+                        else -> "Female"
                     }
-            }
+
+                    val updates = hashMapOf<String, Any>(
+                        "bio" to editBio.text.toString(),
+                        "location" to editLocation.text.toString(),
+                        "mobile" to editMobile.text.toString(),
+                        "gender" to listOf(genderSelection),
+                        "interested_in" to listOf(interestedInSelection),
+                        "passions" to userSelectedInterests
+                    )
+
+                    userId?.let { id ->
+                        db.collection("tbl_users").document(id)
+                            .update(updates)
+                            .addOnSuccessListener {
+                                Toast.makeText(requireContext(), "Profile updated!", Toast.LENGTH_SHORT).show()
+                                (activity as? ProfilePage)?.loadUserProfile()
+                                dismiss() // Close the BottomSheet
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(requireContext(), "Update failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                }
+                .setNegativeButton("Discard") { _, _ ->
+                    // EXIT WITHOUT SAVING
+                    dismiss()
+                }
+                .setNeutralButton("Cancel", null) // Stay on the screen to keep editing
+                .show()
         }
     }
 
