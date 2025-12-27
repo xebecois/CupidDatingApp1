@@ -46,6 +46,14 @@ class ProfilePage : AppCompatActivity() {
             editSheet.show(supportFragmentManager, "layoutEditProfile")
         }
 
+        // --- BOTTOM NAVBAR ACTION BUTTONS ---
+        val btnHome: ImageButton = findViewById(R.id.btnHome)
+        btnHome.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            startActivity(intent)
+        }
+
         val btnMatches: ImageButton = findViewById(R.id.btnMatches)
         btnMatches.setOnClickListener {
             val intent = Intent(this, MatchesPage::class.java)
@@ -54,9 +62,9 @@ class ProfilePage : AppCompatActivity() {
             startActivity(intent)
         }
 
-        val btnHome: ImageButton = findViewById(R.id.btnHome)
-        btnHome.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
+        val btnMessage: ImageButton = findViewById(R.id.btnMessages)
+        btnMessage.setOnClickListener {
+            val intent = Intent(this, MessagingPage::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         }

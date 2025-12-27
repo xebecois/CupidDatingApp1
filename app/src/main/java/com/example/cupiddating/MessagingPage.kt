@@ -27,18 +27,18 @@ class MessagingPage : AppCompatActivity() {
             insets
         }
 
+        // --- BOTTOM NAVBAR ACTION BUTTONS ---
+        val btnHome: ImageButton = findViewById(R.id.btnHome)
+        btnHome.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            startActivity(intent)
+        }
 
         val btnMatches: ImageButton = findViewById(R.id.btnMatches)
         btnMatches.setOnClickListener {
             val intent = Intent(this, MatchesPage::class.java)
             // This flag brings the existing MatchesPage to front if it exists, preserving its state
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            startActivity(intent)
-        }
-
-        val btnHome: ImageButton = findViewById(R.id.btnHome)
-        btnHome.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             startActivity(intent)
         }
