@@ -47,24 +47,27 @@ class MessagingPage : AppCompatActivity() {
         container.removeAllViews()
 
         db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
-            val myRealIdField = myDoc.getString("user_id") ?: ""
-            if (myRealIdField.isEmpty()) return@addOnSuccessListener
+            val myId = myDoc.getString("user_id") ?: ""
+            if (myId.isEmpty()) return@addOnSuccessListener
 
-            val queries = listOf(
-                db.collection("tbl_matches").whereEqualTo("liker_user_id", myRealIdField),
-                db.collection("tbl_matches").whereEqualTo("liked_user_id", myRealIdField)
-            )
+            db.collection("tbl_matches")
+                .whereEqualTo("liker_user_id", myId)
+                .get()
+                .addOnSuccessListener { myLikes ->
+                    for (likeDoc in myLikes) {
+                        val otherUserId = likeDoc.getString("liked_user_id") ?: ""
 
-            queries.forEach { query ->
-                query.get().addOnSuccessListener { documents ->
-                    for (doc in documents) {
-                        val u1 = doc.getString("liker_user_id") ?: ""
-                        val u2 = doc.getString("liked_user_id") ?: ""
-                        val otherUserId = if (u1 == myRealIdField) u2 else u1
-                        if (otherUserId.isNotEmpty()) loadMatchUI(otherUserId, container, myRealIdField)
+                        db.collection("tbl_matches")
+                            .whereEqualTo("liker_user_id", otherUserId)
+                            .whereEqualTo("liked_user_id", myId)
+                            .get()
+                            .addOnSuccessListener { reciprocalLikes ->
+                                if (!reciprocalLikes.isEmpty) {
+                                    loadMatchUI(otherUserId, container, myId)
+                                }
+                            }
                     }
                 }
-            }
         }
     }
 
