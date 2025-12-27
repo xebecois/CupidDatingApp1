@@ -67,15 +67,15 @@ class MessagingPage : AppCompatActivity() {
             // 2. Query matches where YOU are either user_1 or user_2
             // We run two queries to cover both possible slots in the match document
             val queries = listOf(
-                db.collection("tbl_matches").whereEqualTo("user_id_1", myRealIdField),
-                db.collection("tbl_matches").whereEqualTo("user_id_2", myRealIdField)
+                db.collection("tbl_matches").whereEqualTo("liker_user_id", myRealIdField),
+                db.collection("tbl_matches").whereEqualTo("liked_user_id", myRealIdField)
             )
 
             queries.forEach { query ->
                 query.get().addOnSuccessListener { documents ->
                     for (doc in documents) {
-                        val u1 = doc.getString("user_id_1") ?: ""
-                        val u2 = doc.getString("user_id_2") ?: ""
+                        val u1 = doc.getString("liker_user_id") ?: ""
+                        val u2 = doc.getString("liked_user_id") ?: ""
 
                         // The "other" person is the one who ISN'T you
                         val otherUserId = if (u1 == myRealIdField) u2 else u1

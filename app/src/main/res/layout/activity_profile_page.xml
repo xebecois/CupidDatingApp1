@@ -93,7 +93,9 @@
                             android:id="@+id/profileImage"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:scaleType="centerInside"
+                            android:focusable="true"
+                            android:clickable="true"
+                            android:scaleType="centerCrop"
                             tools:srcCompat="@tools:sample/avatars" />
                     </androidx.cardview.widget.CardView>
 
@@ -250,13 +252,16 @@
                     android:id="@+id/textView3"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="15dp"
                     android:text="Pick some that show the true you." />
 
                 <Button
                     android:id="@+id/logout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="logout" />
+                    android:backgroundTint="#E94057"
+                    android:text="Logout"
+                    app:cornerRadius="5dp" />
             </LinearLayout>
         </ScrollView>
 
