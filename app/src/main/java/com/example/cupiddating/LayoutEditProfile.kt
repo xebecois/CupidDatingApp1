@@ -15,7 +15,7 @@ class layoutEditProfile : BottomSheetDialogFragment() {
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
     private val allInterests = arrayOf(
         "Photography", "Shopping", "Karaoke", "Yoga", "Cooking",
-        "Tennis", "Run", "Swimming", "Art", "Traveling",
+        "Tennis", "Running","Cycling", "Swimming", "Hiking", "Art", "Traveling",
         "Extreme sports", "Music", "Drink", "Video games"
     )
     private var selectedItems = BooleanArray(allInterests.size)

@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "678089216161-u5759nnatekk0v4e5fuepmc6mcpvl873.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cupiddating",
+            "certificate_hash": "d2336940b4e02750b37c01c4ba4579fc09c45c0f"
+          }
+        },
+        {
           "client_id": "678089216161-vg7ae18lncvmalh2g2g79ar6em10rgs4.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
