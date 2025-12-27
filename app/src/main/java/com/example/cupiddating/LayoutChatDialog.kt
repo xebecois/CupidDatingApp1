@@ -9,6 +9,7 @@ import com.google.firebase.firestore.*
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.core.widget.NestedScrollView
+import com.bumptech.glide.Glide
 
 class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val myId: String) : BottomSheetDialogFragment() {
 
@@ -17,7 +18,7 @@ class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val m
     private lateinit var scrollView: NestedScrollView
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
     private val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
-
+    private var otherUserImageUrl: String? = null
 
     override fun onStart() {
         super.onStart()
@@ -44,8 +45,47 @@ class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val m
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.layout_chat_dialog, container, false)
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.layout_chat_dialog, container, false)
+        val headerTitle = view.findViewById<TextView>(R.id.tv_chat_header)
+        val statusText = view.findViewById<TextView>(R.id.tv_user_status)
+        val profileIv = view.findViewById<ImageView>(R.id.chat_profile_image) // The header image
+
+        headerTitle.text = otherUserName
+
+        val db = FirebaseFirestore.getInstance()
+        db.collection("tbl_users")
+            .whereEqualTo("user_id", otherUserId)
+            .limit(1)
+            .addSnapshotListener { snapshots, error ->
+                if (error != null || snapshots == null || snapshots.isEmpty) return@addSnapshotListener
+
+                val document = snapshots.documents[0]
+
+                val imageUrl = document.getString("profile_picture") ?: ""
+                val isOnline = document.getBoolean("isOnline") ?: false
+
+                if (imageUrl.isNotEmpty()) {
+                    Glide.with(this)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.profile_red)
+                        .circleCrop()
+                        .into(profileIv)
+                } else {
+                    profileIv.setImageResource(R.drawable.profile_red)
+                }
+
+                statusText.text = if (isOnline) "Online" else "Offline"
+                statusText.setTextColor(
+                    if (isOnline) Color.parseColor("#4CAF50") else Color.GRAY
+                )
+            }
+
+        return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -57,8 +97,6 @@ class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val m
         val tvHeader = view.findViewById<TextView>(R.id.tv_chat_header)
         val etInput = view.findViewById<EditText>(R.id.et_chat_input)
         val btnSend = view.findViewById<ImageButton>(R.id.btn_send_message)
-
-        tvHeader.text = "Chat with $otherUserName"
 
         markMessagesAsSeen()
 
@@ -74,6 +112,28 @@ class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val m
         listenForMessages()
     }
 
+    private fun loadHeaderImage(url: String, imageView: ImageView) {
+        if (!isAdded) return // Guard against fragment being detached
+
+        try {
+            val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().getReferenceFromUrl(url)
+            val MAX_SIZE: Long = 1024 * 1024
+
+            storageRef.getBytes(MAX_SIZE).addOnSuccessListener { bytes ->
+                val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                // Ensure we update on the main thread
+                imageView.post {
+                    imageView.setImageBitmap(bitmap)
+                }
+            }.addOnFailureListener {
+                // Fallback if the URL is expired or invalid
+                imageView.setImageResource(R.drawable.profile_red)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            imageView.setImageResource(R.drawable.profile_red)
+        }
+    }
     private fun listenForMessages() {
         val db = FirebaseFirestore.getInstance()
 
