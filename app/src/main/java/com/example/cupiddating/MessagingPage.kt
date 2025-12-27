@@ -1,5 +1,3 @@
-// MessagingPage.kt
-
 package com.example.cupiddating
 
 import android.content.Intent

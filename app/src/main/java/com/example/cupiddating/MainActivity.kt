@@ -1,5 +1,3 @@
-// MainActivity.kt
-
 package com.example.cupiddating
 
 import android.app.AlertDialog
@@ -27,285 +25,119 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     private lateinit var adapter: CardStackAdapter
     private lateinit var layoutEmptyState: LinearLayout
 
-    // Store current filters
-    private var currentGenderFilter: String = "Both"
-    private var currentMinAge: Int = 18
-    private var currentMaxAge: Int = 80
+    private var currentGenderFilter = "Both"
+    private var currentMinAge = 18
+    private var currentMaxAge = 80
+    private var isSuperLikeBtnClicked = false
+    private var myPassionsList = arrayListOf<String>()
+    private val actionHistory = Stack<Boolean>()
 
-    // --- STATE TRACKING ---
-    // Flag to distinguish between a Normal Like button click and a SuperLike button click
-    // because both perform a "Right Swipe" visually.
-    private var isSuperLikeBtnClicked: Boolean = false
-
-    // Logged User's Interests/Passions
-    private var myPassionsList: ArrayList<String> = arrayListOf()
-
-    // Register a launcher to handle the return data from ProfileDetailsActivity
     private val detailsLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val action = result.data?.getStringExtra("ACTION")
-            when (action) {
-                "LIKE" -> autoSwipe(Direction.Right)
-                "PASS" -> autoSwipe(Direction.Left)
+            when (result.data?.getStringExtra("ACTION")) {
+                "LIKE" -> performSwipe(Direction.Right)
+                "PASS" -> performSwipe(Direction.Left)
                 "SUPERLIKE" -> {
-                    isSuperLikeBtnClicked = true // Set your flag if you use one
-                    autoSwipe(Direction.Right)
+                    isSuperLikeBtnClicked = true
+                    performSwipe(Direction.Right)
                 }
             }
         }
     }
-
-    // Stack to track if the last swipe resulted in a DB write (Like/SuperLike) or not (Pass)
-    // true = DB write occurred (need to delete), false = No DB write (just rewind)
-    private val actionHistory = Stack<Boolean>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        setupWindowInsets()
+        setupNavigation()
+        setupCardStack()
+        setupButtons()
+
+        fetchUsersFromFirebase("Both", 18, 80)
+    }
+
+    private fun setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+    }
 
-        // --- UNDO BUTTON LOGIC ---
-        val btnUndoMain = findViewById<ImageButton>(R.id.btnUndo_main)
-        btnUndoMain.setOnClickListener {
-            undoLastAction()
+    private fun setupNavigation() {
+        findViewById<ImageButton>(R.id.btnUndo_main).setOnClickListener { undoLastAction() }
+        findViewById<ImageButton>(R.id.btnFilter).setOnClickListener {
+            FilterBottomSheet().show(supportFragmentManager, "FilterBottomSheet")
         }
+        findViewById<ImageButton>(R.id.btnMainMatches).setOnClickListener { navigateTo(MatchesPage::class.java) }
+        findViewById<ImageButton>(R.id.btnMainProfile).setOnClickListener { navigateTo(ProfilePage::class.java) }
+        findViewById<ImageButton>(R.id.btnMainMessages).setOnClickListener { navigateTo(MessagingPage::class.java) }
+    }
 
-        // --- BOTTOM NAVBAR ACTION BUTTONS ---
-        val btnFilter = findViewById<ImageButton>(R.id.btnFilter)
-        btnFilter.setOnClickListener {
-            val filterSheet = FilterBottomSheet()
-            filterSheet.show(supportFragmentManager, "FilterBottomSheet")
-        }
+    private fun navigateTo(cls: Class<*>) {
+        val intent = Intent(this, cls).apply { addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT) }
+        startActivity(intent)
+    }
 
-        val btnMatches: ImageButton = findViewById(R.id.btnMainMatches)
-        btnMatches.setOnClickListener {
-            val intent = Intent(this, MatchesPage::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            startActivity(intent)
-        }
-
-        val btnProfile: ImageButton = findViewById(R.id.btnMainProfile)
-        btnProfile.setOnClickListener {
-            val intent = Intent(this, ProfilePage::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            startActivity(intent)
-        }
-
-        val btnMessage: ImageButton = findViewById(R.id.btnMainMessages)
-        btnMessage.setOnClickListener {
-            val intent = Intent(this, MessagingPage::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            startActivity(intent)
-        }
-
-        // --- CARD STACK SETUP ---
+    private fun setupCardStack() {
         cardStackView = findViewById(R.id.cardStackView)
-        manager = CardStackLayoutManager(this, this)
-        manager.setStackFrom(StackFrom.None)
-        manager.setVisibleCount(3)
-        manager.setTranslationInterval(8.0f)
-        manager.setScaleInterval(0.95f)
-        manager.setSwipeThreshold(0.3f)
-        manager.setMaxDegree(20.0f)
+        layoutEmptyState = findViewById(R.id.layout_empty_state)
 
-        // Setting direction to HORIZONTAL allows Left (Pass) and Right (Like/Superlike)
-        manager.setDirections(Direction.HORIZONTAL)
-        manager.setCanScrollHorizontal(true)
-        manager.setCanScrollVertical(false)
+        manager = CardStackLayoutManager(this, this).apply {
+            setStackFrom(StackFrom.None)
+            setVisibleCount(3)
+            setTranslationInterval(8.0f)
+            setScaleInterval(0.95f)
+            setSwipeThreshold(0.3f)
+            setMaxDegree(20.0f)
+            setDirections(Direction.HORIZONTAL)
+            setCanScrollHorizontal(true)
+            setCanScrollVertical(false)
+        }
+
+        adapter = CardStackAdapter().apply {
+            onCardClick = { user ->
+                val intent = Intent(this@MainActivity, MainProfileDetailsActivity::class.java).apply {
+                    putExtra("userId", user.userId)
+                    putExtra("name", user.name)
+                    putExtra("age", user.age)
+                    putExtra("location", user.location)
+                    putExtra("bio", user.bio)
+                    putExtra("distance", user.distance)
+                    putStringArrayListExtra("passions", ArrayList(user.passions))
+                    putStringArrayListExtra("images", ArrayList(user.images))
+                    putStringArrayListExtra("myPassions", myPassionsList)
+                }
+                detailsLauncher.launch(intent)
+            }
+        }
 
         cardStackView.layoutManager = manager
-        adapter = CardStackAdapter()
         cardStackView.adapter = adapter
 
-        // --- EMPTY STATE ---
-        layoutEmptyState = findViewById(R.id.layout_empty_state)
-        val btnRefresh = findViewById<Button>(R.id.btn_refresh_profiles)
-        btnRefresh.setOnClickListener {
+        findViewById<Button>(R.id.btn_refresh_profiles).setOnClickListener {
             layoutEmptyState.visibility = View.GONE
             cardStackView.visibility = View.VISIBLE
             fetchUsersFromFirebase(currentGenderFilter, currentMinAge, currentMaxAge)
         }
-
-        setupButtons()
-
-        // Initial Load
-        fetchUsersFromFirebase("Both", 18, 80)
-    }
-
-    override fun onFilterApplied(gender: String, minAge: Int, maxAge: Int) {
-        currentGenderFilter = gender
-        currentMinAge = minAge
-        currentMaxAge = maxAge
-        layoutEmptyState.visibility = View.GONE
-        cardStackView.visibility = View.VISIBLE
-        fetchUsersFromFirebase(gender, minAge, maxAge)
-    }
-
-    private fun fetchUsersFromFirebase(gender: String, minAge: Int, maxAge: Int) {
-        val db = FirebaseFirestore.getInstance()
-        val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-
-        // 1. Get MY custom user_id (e.g. user_005)
-        db.collection("tbl_users").document(authUid).get()
-            .addOnSuccessListener { myDoc ->
-                val myRealIdField = myDoc.getString("user_id") ?: ""
-                val myBirthday = myDoc.getString("birthday") ?: ""
-                val myAge = calculateAgeFromString(myBirthday)
-                val myLocation = myDoc.getString("location") ?: ""
-                val myPassions = (myDoc.get("passions") as? List<String>) ?: emptyList()
-
-                // Save MY passions to the class variable (convert to ArrayList)
-                myPassionsList = ArrayList(myPassions)
-
-                // 2. Get list of interactions
-                db.collection("tbl_matches")
-                    .whereEqualTo("liker_user_id", myRealIdField)
-                    .get()
-                    .addOnSuccessListener { alreadyInteractedDocs ->
-
-                        val excludedIds = mutableSetOf<String>()
-                        excludedIds.add(myRealIdField)
-
-                        for (doc in alreadyInteractedDocs) {
-                            val targetId = doc.getString("liked_user_id")
-                            if (targetId != null) excludedIds.add(targetId)
-                        }
-
-                        // 3. Fetch Candidates
-                        var query: Query = db.collection("tbl_users")
-                        if (gender != "Both") {
-                            query = query.whereArrayContains("gender", gender)
-                        }
-
-                        query.limit(50).get().addOnSuccessListener { documents ->
-                            val usersList = ArrayList<DatingUser>()
-
-                            for (document in documents) {
-                                // IMPORTANT: Get the custom "user_id" field (e.g., user_006)
-                                val theirCustomId = document.getString("user_id") ?: ""
-
-                                if (excludedIds.contains(theirCustomId) || theirCustomId.isEmpty()) {
-                                    continue
-                                }
-
-                                val name = document.getString("name") ?: "Unknown"
-                                val birthdayString = document.getString("birthday") ?: ""
-                                val location = document.getString("location") ?: "No Location"
-                                val bio = document.getString("bio") ?: "No bio available"
-
-                                val preferences = document.get("preferences") as? Map<String, Any>
-                                val distanceLong = preferences?.get("distance") as? Long ?: 0L
-                                val distance = distanceLong.toInt()
-
-                                val profilePicture = document.getString("profile_picture") ?: ""
-                                val galleryImages = (document.get("photos") as? List<String>) ?: emptyList()
-
-                                val allImages = ArrayList<String>()
-                                if (profilePicture.isNotEmpty()) { allImages.add(profilePicture) }
-                                allImages.addAll(galleryImages)
-
-                                val theirPassions = (document.get("passions") as? List<String>) ?: emptyList()
-                                val calculatedAge = calculateAgeFromString(birthdayString)
-
-                                if (calculatedAge in minAge..maxAge) {
-                                    val dynamicMatchPercent = calculateMatchScore(
-                                        myPassions, theirPassions, myAge, calculatedAge, myLocation, location
-                                    )
-
-                                    // Pass the CUSTOM ID (theirCustomId) to the DatingUser object, NOT document.id
-                                    usersList.add(
-                                        DatingUser(
-                                            theirCustomId,
-                                            name,
-                                            calculatedAge,
-                                            location,
-                                            dynamicMatchPercent,
-                                            allImages,
-                                            theirPassions,
-                                            bio,
-                                            distance
-                                        )
-                                    )
-                                }
-                            }
-
-                            usersList.sortByDescending { it.matchPercent }
-                            adapter.setUsers(usersList)
-
-                            // Define what happens when a card is clicked
-                            adapter.onCardClick = { user ->
-                                val intent = Intent(this, MainProfileDetailsActivity::class.java)
-                                intent.putExtra("userId", user.userId)
-                                intent.putExtra("name", user.name)
-                                intent.putExtra("age", user.age)
-                                intent.putExtra("location", user.location)
-                                intent.putExtra("bio", user.bio)
-                                intent.putExtra("distance", user.distance)
-                                intent.putStringArrayListExtra("passions", ArrayList(user.passions))
-                                intent.putStringArrayListExtra("images", ArrayList(user.images))
-                                // Pass MY passions so we can highlight matches
-                                intent.putStringArrayListExtra("myPassions", myPassionsList)
-
-                                // Launch using the new launcher
-                                detailsLauncher.launch(intent)
-                            }
-
-                            if (usersList.isEmpty()) {
-                                cardStackView.visibility = View.GONE
-                                layoutEmptyState.visibility = View.VISIBLE
-                            } else {
-                                cardStackView.visibility = View.VISIBLE
-                                layoutEmptyState.visibility = View.GONE
-                            }
-                        }
-                    }
-            }
     }
 
     private fun setupButtons() {
-        val btnPass = findViewById<ImageButton>(R.id.btn_pass)
-        val btnLike = findViewById<ImageButton>(R.id.btn_like)
-        val btnSuperLike = findViewById<ImageButton>(R.id.btn_superLike)
-
-        btnPass.setOnClickListener {
-            // Logic: Left Swipe -> Pass
-            performSwipe(Direction.Left)
-        }
-
-        btnLike.setOnClickListener {
-            // Logic: Right Swipe, NO flag -> Normal Like
+        findViewById<ImageButton>(R.id.btn_pass).setOnClickListener { performSwipe(Direction.Left) }
+        findViewById<ImageButton>(R.id.btn_like).setOnClickListener {
             isSuperLikeBtnClicked = false
             performSwipe(Direction.Right)
         }
-
-        btnSuperLike.setOnClickListener {
-            // Logic: Right Swipe, WITH flag -> SuperLike
-            // We set the flag here, so onCardSwiped knows it's special
+        findViewById<ImageButton>(R.id.btn_superLike).setOnClickListener {
             isSuperLikeBtnClicked = true
             performSwipe(Direction.Right)
         }
     }
 
-    // Helper to trigger swipe programmatically
-    private fun autoSwipe(direction: Direction) {
-        val setting = SwipeAnimationSetting.Builder()
-            .setDirection(direction)
-            .setDuration(Duration.Normal.duration)
-            .setInterpolator(AccelerateInterpolator())
-            .build()
-        manager.setSwipeAnimationSetting(setting)
-        cardStackView.swipe()
-    }
-
-    // Helper to perform swipe with animation settings
     private fun performSwipe(direction: Direction) {
         val setting = SwipeAnimationSetting.Builder()
             .setDirection(direction)
@@ -316,21 +148,68 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         cardStackView.swipe()
     }
 
-    // --- UNDO IMPLEMENTATION ---
-    private fun undoLastAction() {
-        // 1. Visual Rewind (Library function)
-        cardStackView.rewind()
+    override fun onFilterApplied(gender: String, minAge: Int, maxAge: Int) {
+        currentGenderFilter = gender
+        currentMinAge = minAge
+        currentMaxAge = maxAge
+        fetchUsersFromFirebase(gender, minAge, maxAge)
+    }
 
-        // 2. Logic Rewind (Database)
-        if (actionHistory.isNotEmpty()) {
-            val wasDbWrite = actionHistory.pop()
+    private fun fetchUsersFromFirebase(gender: String, minAge: Int, maxAge: Int) {
+        val db = FirebaseFirestore.getInstance()
+        val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-            // If the last action saved to DB (Like/SuperLike), we must delete it
-            if (wasDbWrite) {
-                deleteLastMatchFromFirestore()
-            } else {
-                Toast.makeText(this, "Rewind (Pass undone)", Toast.LENGTH_SHORT).show()
+        db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
+            val myId = myDoc.getString("user_id") ?: ""
+            val myPassions = (myDoc.get("passions") as? List<String>) ?: emptyList()
+            myPassionsList = ArrayList(myPassions)
+
+            db.collection("tbl_matches").whereEqualTo("liker_user_id", myId).get().addOnSuccessListener { interactions ->
+                val excludedIds = mutableSetOf(myId)
+                interactions.forEach { doc -> doc.getString("liked_user_id")?.let { excludedIds.add(it) } }
+
+                var query: Query = db.collection("tbl_users")
+                if (gender != "Both") query = query.whereArrayContains("gender", gender)
+
+                query.limit(50).get().addOnSuccessListener { docs ->
+                    val usersList = ArrayList<DatingUser>()
+                    for (doc in docs) {
+                        val theirId = doc.getString("user_id") ?: ""
+                        if (excludedIds.contains(theirId) || theirId.isEmpty()) continue
+
+                        val age = calculateAgeFromString(doc.getString("birthday") ?: "")
+                        if (age in minAge..maxAge) {
+                            val theirPassions = (doc.get("passions") as? List<String>) ?: emptyList()
+                            val images = arrayListOf<String>()
+                            doc.getString("profile_picture")?.let { images.add(it) }
+                            (doc.get("photos") as? List<String>)?.let { images.addAll(it) }
+
+                            usersList.add(DatingUser(
+                                theirId, doc.getString("name") ?: "Unknown", age,
+                                doc.getString("location") ?: "No Location",
+                                calculateMatchScore(myPassions, theirPassions, age, myId, myDoc),
+                                images, theirPassions, doc.getString("bio") ?: "",
+                                (doc.get("preferences") as? Map<*, *>)?.get("distance") as? Int ?: 0
+                            ))
+                        }
+                    }
+                    usersList.sortByDescending { it.matchPercent }
+                    adapter.setUsers(usersList)
+                    updateEmptyState(usersList.isEmpty())
+                }
             }
+        }
+    }
+
+    private fun updateEmptyState(isEmpty: Boolean) {
+        cardStackView.visibility = if (isEmpty) View.GONE else View.VISIBLE
+        layoutEmptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
+    }
+
+    private fun undoLastAction() {
+        cardStackView.rewind()
+        if (actionHistory.isNotEmpty() && actionHistory.pop()) {
+            deleteLastMatchFromFirestore()
         }
     }
 
@@ -338,214 +217,115 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         val db = FirebaseFirestore.getInstance()
         val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
-            val myCustomId = myDoc.getString("user_id") ?: return@addOnSuccessListener
-
-            // Query specifically for the MOST RECENT match created by THIS user
+        db.collection("tbl_users").document(authUid).get().addOnSuccessListener { doc ->
+            val myId = doc.getString("user_id") ?: return@addOnSuccessListener
             db.collection("tbl_matches")
-                .whereEqualTo("liker_user_id", myCustomId)
-                .orderBy("match_date", Query.Direction.DESCENDING) // Get the latest one
+                .whereEqualTo("liker_user_id", myId)
+                .orderBy("match_date", Query.Direction.DESCENDING)
                 .limit(1)
                 .get()
-                .addOnSuccessListener { documents ->
-                    for (document in documents) {
-                        // Delete the document found
-                        db.collection("tbl_matches").document(document.id).delete()
-                            .addOnSuccessListener {
-                                Toast.makeText(this, "Undid Last Match", Toast.LENGTH_SHORT).show()
-                            }
-                            .addOnFailureListener {
-                                Toast.makeText(this, "Failed to undo match", Toast.LENGTH_SHORT).show()
-                            }
-                    }
+                .addOnSuccessListener { results ->
+                    for (res in results) db.collection("tbl_matches").document(res.id).delete()
                 }
         }
     }
-
-    // --- LOGIC HELPERS ---
-    private fun calculateAgeFromString(dateString: String): Int {
-        if (dateString.isEmpty()) return 18
-        val format = SimpleDateFormat("MM/dd/yyyy", Locale.US)
-        return try {
-            val date = format.parse(dateString) ?: return 18
-            val dob = Calendar.getInstance()
-            dob.time = date
-            val today = Calendar.getInstance()
-            var age = today.get(Calendar.YEAR) - dob.get(Calendar.YEAR)
-            if (today.get(Calendar.DAY_OF_YEAR) < dob.get(Calendar.DAY_OF_YEAR)) age--
-            if (age < 0) 0 else age
-        } catch (e: Exception) { 18 }
-    }
-
-    private fun calculateMatchScore(
-        myInterests: List<String>, theirInterests: List<String>,
-        myAge: Int, theirAge: Int, myLocation: String, theirLocation: String
-    ): Int {
-        var score = 0.0
-        val commonInterests = myInterests.intersect(theirInterests.toSet()).size
-        score += (commonInterests * 15.0).coerceAtMost(60.0)
-        val ageGap = kotlin.math.abs(myAge - theirAge)
-        if (ageGap <= 2) score += 20.0 else if (ageGap <= 5) score += 10.0
-        if (myLocation.equals(theirLocation, ignoreCase = true)) score += 20.0
-        return (score + 40).coerceAtMost(100.0).toInt()
-    }
-
-    // --- CARD SWIPE LISTENERS ---
 
     override fun onCardSwiped(direction: Direction?) {
-        // --- TUTORIAL LOGIC START ---
         val prefs = getSharedPreferences("CupidPrefs", Context.MODE_PRIVATE)
-        val hasSeenPassTutorial = prefs.getBoolean("seen_pass_tutorial", false)
-        val hasSeenLikeTutorial = prefs.getBoolean("seen_like_tutorial", false)
 
-        // Scenario 1: First time swiping Left (Pass)
-        if (direction == Direction.Left && !hasSeenPassTutorial) {
+        if (direction == Direction.Left && !prefs.getBoolean("seen_pass_tutorial", false)) {
             prefs.edit().putBoolean("seen_pass_tutorial", true).apply()
             cardStackView.rewind()
-            showPassTutorialDialog()
+            showTutorialDialog(R.layout.dialog_tutorial_pass, Direction.Left)
             return
         }
 
-        // Scenario 2: First time swiping Right (Like)
-        if (direction == Direction.Right && !hasSeenLikeTutorial) {
+        if (direction == Direction.Right && !prefs.getBoolean("seen_like_tutorial", false)) {
             prefs.edit().putBoolean("seen_like_tutorial", true).apply()
             cardStackView.rewind()
-            showLikeTutorialDialog()
+            showTutorialDialog(R.layout.dialog_tutorial_like, Direction.Right)
             return
         }
-        // --- TUTORIAL LOGIC END ---
 
-        // Proceed with normal logic if tutorials are already seen
-        val position = manager.topPosition - 1
-        val swipedUser = adapter.getUser(position)
-
-        if (swipedUser != null) {
-            when (direction) {
-                Direction.Right -> {
-                    // It can be a "Like" or a "Superlike" depending on which button was clicked
-                    if (isSuperLikeBtnClicked) {
-                        saveMatchToFirestore(swipedUser, "superlike")
-                        Toast.makeText(this, "Super Liked ${swipedUser.name}!", Toast.LENGTH_SHORT).show()
-                        // Reset flag
-                        isSuperLikeBtnClicked = false
-                    } else {
-                        saveMatchToFirestore(swipedUser, "like")
-                        Toast.makeText(this, "Liked ${swipedUser.name}", Toast.LENGTH_SHORT).show()
-                    }
-                    actionHistory.push(true) // Push TRUE because we saved to DB
-                }
-                Direction.Left -> {
-                    // Pass (logic omitted for brevity, usually just ignore or save 'pass' to excluded list)
-                    actionHistory.push(false) // Push FALSE because we didn't save to DB
-                }
-                Direction.Top -> {
-                    // Fallback in case manual UP swipe is enabled later
-                    saveMatchToFirestore(swipedUser, "superlike")
-                    actionHistory.push(true)
-                }
-                else -> {}
+        val user = adapter.getUser(manager.topPosition - 1) ?: return
+        when (direction) {
+            Direction.Right -> {
+                val type = if (isSuperLikeBtnClicked) "superlike" else "like"
+                saveMatchToFirestore(user, type)
+                actionHistory.push(true)
+                isSuperLikeBtnClicked = false
             }
+            Direction.Left -> actionHistory.push(false)
+            else -> {}
         }
 
-        if (manager.topPosition == adapter.itemCount) {
-            cardStackView.visibility = View.GONE
-            layoutEmptyState.visibility = View.VISIBLE
-        }
+        if (manager.topPosition == adapter.itemCount) updateEmptyState(true)
     }
 
-    // --- DIALOG DISPLAY FUNCTIONS ---
-
-    private fun showPassTutorialDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_tutorial_pass, null)
-        val builder = AlertDialog.Builder(this)
-        builder.setView(dialogView)
-        val dialog = builder.create()
+    private fun showTutorialDialog(layoutId: Int, direction: Direction) {
+        val view = layoutInflater.inflate(layoutId, null)
+        val dialog = AlertDialog.Builder(this).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-        val btnCancel = dialogView.findViewById<TextView>(R.id.btn_dialog_cancel)
-        val btnConfirm = dialogView.findViewById<TextView>(R.id.btn_dialog_confirm)
-
-        btnCancel.setOnClickListener { dialog.dismiss() }
-        btnConfirm.setOnClickListener {
+        view.findViewById<TextView>(R.id.btn_dialog_cancel).setOnClickListener { dialog.dismiss() }
+        view.findViewById<TextView>(R.id.btn_dialog_confirm).setOnClickListener {
             dialog.dismiss()
-            performSwipe(Direction.Left)
+            performSwipe(direction)
         }
         dialog.show()
     }
 
-    private fun showLikeTutorialDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_tutorial_like, null)
-        val builder = AlertDialog.Builder(this)
-        builder.setView(dialogView)
-        val dialog = builder.create()
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
-        val btnCancel = dialogView.findViewById<TextView>(R.id.btn_dialog_cancel)
-        val btnConfirm = dialogView.findViewById<TextView>(R.id.btn_dialog_confirm)
-
-        btnCancel.setOnClickListener { dialog.dismiss() }
-        btnConfirm.setOnClickListener {
-            dialog.dismiss()
-            performSwipe(Direction.Right)
-        }
-        dialog.show()
-    }
-
-    private fun saveMatchToFirestore(targetUser: DatingUser, interactionType: String) {
+    private fun saveMatchToFirestore(targetUser: DatingUser, type: String) {
         val db = FirebaseFirestore.getInstance()
         val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // 1. Get MY Custom ID
         db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
-            val myCustomId = myDoc.getString("user_id") ?: return@addOnSuccessListener
-            val targetCustomId = targetUser.userId
-
-            // 2. TRANSACTIONAL ID GENERATION
-            // We use a counter document to prevent race conditions.
+            val myId = myDoc.getString("user_id") ?: return@addOnSuccessListener
             val counterRef = db.collection("tbl_counters").document("match_counter")
 
             db.runTransaction { transaction ->
                 val snapshot = transaction.get(counterRef)
+                val count = (snapshot.getLong("count") ?: 9) + 1
+                val matchId = String.format("match_%03d", count)
 
-                // Initialize if doesn't exist. Start at 9, so next increment is 10
-                val currentCount = if (snapshot.exists()) {
-                    snapshot.getLong("count") ?: 9
-                } else {
-                    9
-                }
-
-                val nextCount = currentCount + 1
-                val newMatchId = String.format("match_%03d", nextCount)
-
-                // Write new count back to counter doc
-                val newData = hashMapOf("count" to nextCount)
-                transaction.set(counterRef, newData)
-
-                // Prepare match data
-                val matchData = hashMapOf(
-                    "match_id" to newMatchId,
-                    "liker_user_id" to myCustomId,
-                    "liked_user_id" to targetCustomId,
-                    "type" to listOf(interactionType),
+                transaction.set(counterRef, hashMapOf("count" to count))
+                transaction.set(db.collection("tbl_matches").document(matchId), hashMapOf(
+                    "match_id" to matchId,
+                    "liker_user_id" to myId,
+                    "liked_user_id" to targetUser.userId,
+                    "type" to listOf(type),
                     "match_date" to FieldValue.serverTimestamp()
-                )
-
-                // Write the actual match document
-                val matchRef = db.collection("tbl_matches").document(newMatchId)
-                transaction.set(matchRef, matchData)
-
-                // Return null or success flag if needed
+                ))
                 null
-            }.addOnFailureListener {
-                Toast.makeText(this, "Failed to save match (Transaction)", Toast.LENGTH_SHORT).show()
-                // You might want to rewind the card here in production if saving fails
             }
         }
     }
 
-    override fun onCardDragging(direction: Direction?, ratio: Float) {}
+    private fun calculateAgeFromString(dateString: String): Int {
+        if (dateString.isEmpty()) return 18
+        return try {
+            val date = SimpleDateFormat("MM/dd/yyyy", Locale.US).parse(dateString) ?: return 18
+            val dob = Calendar.getInstance().apply { time = date }
+            val today = Calendar.getInstance()
+            var age = today.get(Calendar.YEAR) - dob.get(Calendar.YEAR)
+            if (today.get(Calendar.DAY_OF_YEAR) < dob.get(Calendar.DAY_OF_YEAR)) age--
+            age.coerceAtLeast(0)
+        } catch (e: Exception) { 18 }
+    }
+
+    private fun calculateMatchScore(myInts: List<String>, theirInts: List<String>, theirAge: Int, myId: String, myDoc: DocumentSnapshot): Int {
+        var score = 40.0
+        score += (myInts.intersect(theirInts.toSet()).size * 15.0).coerceAtMost(60.0)
+        val myAge = calculateAgeFromString(myDoc.getString("birthday") ?: "")
+        val gap = kotlin.math.abs(myAge - theirAge)
+        score += if (gap <= 2) 20.0 else if (gap <= 5) 10.0 else 0.0
+        if (myDoc.getString("location") == "No Location") score += 0.0 // Placeholder
+        return score.coerceAtMost(100.0).toInt()
+    }
+
+    override fun onCardDragging(d: Direction?, r: Float) {}
     override fun onCardRewound() {}
     override fun onCardCanceled() {}
-    override fun onCardAppeared(view: View?, position: Int) {}
-    override fun onCardDisappeared(view: View?, position: Int) {}
+    override fun onCardAppeared(v: View?, p: Int) {}
+    override fun onCardDisappeared(v: View?, p: Int) {}
 }
