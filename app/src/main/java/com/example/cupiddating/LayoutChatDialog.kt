@@ -6,14 +6,22 @@ import android.view.*
 import android.widget.*
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.firebase.firestore.*
+import java.text.SimpleDateFormat
+import java.util.*
+import androidx.core.widget.NestedScrollView
 
 class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val myId: String) : BottomSheetDialogFragment() {
 
     private lateinit var container: LinearLayout
-    private lateinit var scrollView: ScrollView
+    private lateinit var chatInput: EditText
+    private lateinit var scrollView: NestedScrollView
+    private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private val dateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault())
+
 
     override fun onStart() {
         super.onStart()
+        setStyle(STYLE_NORMAL, R.style.CustomBottomSheetDialogTheme)
         val dialog = dialog as? com.google.android.material.bottomsheet.BottomSheetDialog
         val bottomSheet = dialog?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
 
@@ -43,8 +51,7 @@ class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val m
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        dialog?.setCanceledOnTouchOutside(false)
-
+        chatInput = view.findViewById(R.id.et_chat_input)
         container = view.findViewById(R.id.LL_chat_messages_container)
         scrollView = view.findViewById(R.id.scroll_chat)
         val tvHeader = view.findViewById<TextView>(R.id.tv_chat_header)
@@ -52,6 +59,8 @@ class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val m
         val btnSend = view.findViewById<ImageButton>(R.id.btn_send_message)
 
         tvHeader.text = "Chat with $otherUserName"
+
+        markMessagesAsSeen()
 
         btnSend.setOnClickListener {
             val text = etInput.text.toString().trim()
@@ -61,71 +70,192 @@ class LayoutChatDialog(val otherUserId: String, val otherUserName: String, val m
             }
         }
 
+        dialog?.setCanceledOnTouchOutside(false)
         listenForMessages()
     }
 
     private fun listenForMessages() {
         val db = FirebaseFirestore.getInstance()
 
-        // Real-time listener for the messages collection
+        // 1. Remove .orderBy from the query to prevent "null timestamp" hiding.
+        // 2. We keep the collection fetch simple.
+        // For production, you'd add a .limit(100) here to keep it fast.
         db.collection("tbl_messages")
-            .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) return@addSnapshotListener
+                if (!isAdded || view == null) return@addSnapshotListener
 
-                container.removeAllViews() // Clear for fresh render
+                markMessagesAsSeen()
 
-                for (doc in snapshots!!.documents) {
-                    val sId = doc.getString("sender_id") ?: ""
-                    val rId = doc.getString("receiver_id") ?: ""
-                    val msg = doc.getString("message") ?: ""
-
-                    // Filter: Only show messages belonging to THIS conversation
-                    if ((sId == myId && rId == otherUserId) || (sId == otherUserId && rId == myId)) {
-                        addBubble(msg, sId == myId)
+                // Filter and Sort in Kotlin instead of Firestore
+                val filteredAndSortedDocs = snapshots!!.documents
+                    .filter { doc ->
+                        val sId = doc.getString("sender_id") ?: ""
+                        val rId = doc.getString("receiver_id") ?: ""
+                        (sId == myId && rId == otherUserId) || (sId == otherUserId && rId == myId)
                     }
+                    .sortedBy { doc ->
+                        doc.getTimestamp("timestamp", DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)?.toDate() ?: Date()
+                    }
+                val lastMessageId = filteredAndSortedDocs.lastOrNull()?.id
+
+                container.removeAllViews()
+                var lastDateLabel: String? = null
+
+                for (doc in filteredAndSortedDocs) {
+                    val sId = doc.getString("sender_id") ?: ""
+                    val msg = doc.getString("message") ?: ""
+                    val isSeen = doc.getBoolean("seen") ?: false // Get seen status
+                    val timestamp = doc.getTimestamp("timestamp", DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)?.toDate() ?: Date()
+
+                    val isMostRecent = doc.id == lastMessageId
+
+                    // Date Header logic
+                    val currentDateLabel = dateFormat.format(timestamp)
+                    if (currentDateLabel != lastDateLabel) {
+                        addDateHeader(currentDateLabel)
+                        lastDateLabel = currentDateLabel
+                    }
+
+                    addBubble(msg, sId == myId, timestamp, isSeen, isMostRecent)
                 }
 
-                // Auto-scroll to the bottom of the chat
-                scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
+                scrollView.post {
+                    if (isAdded) {
+                        scrollView.smoothScrollTo(0, container.bottom)
+                    }
+                }
             }
     }
 
-    private fun addBubble(text: String, isMe: Boolean) {
-        val tv = TextView(context)
-        tv.text = text
-        tv.textSize = 16f
-        tv.setPadding(40, 20, 40, 20)
+    private fun addDateHeader(dateText: String) {
+        val tvDate = TextView(context)
+        tvDate.text = dateText
+        tvDate.textSize = 12f
+        tvDate.setTextColor(Color.GRAY)
+        tvDate.gravity = Gravity.CENTER
 
         val params = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        params.setMargins(0, 32, 0, 16)
+        tvDate.layoutParams = params
+        container.addView(tvDate)
+    }
+
+    private fun addBubble(text: String, isMe: Boolean, timestamp: Date, isSeen: Boolean, isMostRecent: Boolean) {
+        // Parent container to stack the Bubble and the Time Label vertically
+        val messageGroup = LinearLayout(context)
+        messageGroup.orientation = LinearLayout.VERTICAL
+
+        // 1. The Message Bubble (Your existing logic)
+        val tvMsg = TextView(context)
+        tvMsg.text = text
+        tvMsg.textSize = 16f
+        tvMsg.setPadding(40, 20, 40, 20)
+        tvMsg.maxWidth = (resources.displayMetrics.widthPixels * 0.7).toInt()
+
+        // Layout for Time and Status Checkmark
+        val statusLayout = LinearLayout(context)
+        statusLayout.orientation = LinearLayout.HORIZONTAL
+        statusLayout.gravity = if (isMe) Gravity.END else Gravity.START
+
+        // 2. The Time Label (New)
+        if (isMostRecent) {
+            val tvTime = TextView(context)
+            tvTime.text = timeFormat.format(timestamp)
+            tvTime.textSize = 11f
+            tvTime.setTextColor(Color.parseColor("#AAAAAA"))
+            tvTime.setPadding(30, 4, 10, 0)
+            statusLayout.addView(tvTime)
+
+            if (isMe) {
+                val tvStatus = TextView(context)
+                tvStatus.text = if (isSeen) "✓✓" else "✓"
+                tvStatus.textSize = 11f
+                tvStatus.setTextColor(if (isSeen) Color.parseColor("#4FC3F7") else Color.GRAY)
+                tvStatus.setPadding(0, 4, 30, 0)
+                statusLayout.addView(tvStatus)
+            }
+        }
+
+        val groupParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         )
-        params.topMargin = 8
-        params.bottomMargin = 8
+        groupParams.setMargins(10, 8, 10, 8)
 
         if (isMe) {
-            params.gravity = Gravity.END
-            tv.setBackgroundResource(R.drawable.bg_message_me) // Create this drawable
-            tv.setTextColor(Color.WHITE)
+            groupParams.gravity = Gravity.END
+            messageGroup.gravity = Gravity.END
+            tvMsg.setBackgroundResource(R.drawable.bg_message_me)
+            tvMsg.setTextColor(Color.WHITE)
         } else {
-            params.gravity = Gravity.START
-            tv.setBackgroundResource(R.drawable.bg_message_them) // Create this drawable
-            tv.setTextColor(Color.BLACK)
+            groupParams.gravity = Gravity.START
+            messageGroup.gravity = Gravity.START
+            tvMsg.setBackgroundResource(R.drawable.bg_message_them)
+            tvMsg.setTextColor(Color.BLACK)
         }
 
-        tv.layoutParams = params
-        container.addView(tv)
+        messageGroup.layoutParams = groupParams
+        messageGroup.addView(tvMsg)
+
+        if (isMostRecent) {
+            messageGroup.addView(statusLayout)
+        }
+
+        container.addView(messageGroup)
     }
 
     private fun sendMessage(text: String) {
         val db = FirebaseFirestore.getInstance()
-        val messageData = hashMapOf(
-            "sender_id" to myId,
-            "receiver_id" to otherUserId,
-            "message" to text,
-            "timestamp" to FieldValue.serverTimestamp()
-        )
-        db.collection("tbl_messages").add(messageData)
+        // Reference to a metadata document that tracks the last ID used
+        val counterRef = db.collection("metadata").document("message_counter")
+
+        db.runTransaction { transaction ->
+            // 1. Get the current count (default to 100 if it doesn't exist)
+            val snapshot = transaction.get(counterRef)
+            val lastId = snapshot.getLong("last_count") ?: 99L
+            val nextId = lastId + 1
+
+            // 2. Prepare the message data
+            val messageData = hashMapOf(
+                "sender_id" to myId,
+                "receiver_id" to otherUserId,
+                "message" to text,
+                "timestamp" to FieldValue.serverTimestamp(),
+                "message_id" to "message_$nextId", // Storing it inside as well for reference
+                "seen" to false
+            )
+
+            // 3. Create the document with the custom name "message_X"
+            val newMessageRef = db.collection("tbl_messages").document("message_$nextId")
+            transaction.set(newMessageRef, messageData)
+
+            // 4. Update the counter for the next message
+            transaction.update(counterRef, "last_count", nextId)
+        }.addOnSuccessListener {
+            chatInput.text.clear()
+        }.addOnFailureListener { e ->
+            Toast.makeText(context, "Failed to send: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    private fun markMessagesAsSeen() {
+        val db = FirebaseFirestore.getInstance()
+
+        // Find all messages sent by the OTHER user to ME that are currently NOT seen
+        db.collection("tbl_messages")
+            .whereEqualTo("sender_id", otherUserId)
+            .whereEqualTo("receiver_id", myId)
+            .whereEqualTo("seen", false)
+            .get()
+            .addOnSuccessListener { documents ->
+                val batch = db.batch()
+                for (doc in documents) {
+                    batch.update(doc.reference, "seen", true)
+                }
+                batch.commit()
+            }
     }
 }

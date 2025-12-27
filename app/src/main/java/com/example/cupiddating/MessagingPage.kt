@@ -1,6 +1,7 @@
 package com.example.cupiddating
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -25,6 +26,8 @@ class MessagingPage : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+
+
         val btnMatches: ImageButton = findViewById(R.id.btnMatches)
         btnMatches.setOnClickListener {
             val intent = Intent(this, MatchesPage::class.java)
@@ -89,7 +92,6 @@ class MessagingPage : AppCompatActivity() {
     private fun loadMatchUI(otherUserId: String, container: LinearLayout, myId: String) {
         val db = FirebaseFirestore.getInstance()
 
-        // Query for the user document where the FIELD "user_id" matches
         db.collection("tbl_users")
             .whereEqualTo("user_id", otherUserId)
             .get()
@@ -100,29 +102,76 @@ class MessagingPage : AppCompatActivity() {
                 val name = userDoc.getString("name") ?: "User"
                 val imageUrl = userDoc.getString("profile_picture") ?: ""
 
-                // Inflate row
                 val view = layoutInflater.inflate(R.layout.item_message_row, container, false)
+                val tvLastMsg = view.findViewById<TextView>(R.id.tv_match_last_msg)
+                val tvTime = view.findViewById<TextView>(R.id.tv_match_time)
+                val tvBadge = view.findViewById<TextView>(R.id.tv_match_badge)
 
-                // Set Data
+                // Set initial name and image
                 view.findViewById<TextView>(R.id.tv_match_name).text = name
                 val profileImage = view.findViewById<ImageView>(R.id.iv_match_profile)
-
                 if (imageUrl.isNotEmpty()) {
                     com.bumptech.glide.Glide.with(this).load(imageUrl).into(profileImage)
                 }
 
-                // Optional: Add "Say hi!" as default last message
-                view.findViewById<TextView>(R.id.tv_match_last_msg).text = "New Match! Say hi 👋"
+                // Real-time listener for the last message and unread count
+                db.collection("tbl_messages")
+                    .addSnapshotListener { snapshots, e ->
+                        if (e != null || snapshots == null) return@addSnapshotListener
 
-                // Click to Chat (Pass the other person's ID)
+                        // 1. Filter messages belonging to THIS specific conversation
+                        val conversationMessages = snapshots.documents.filter { doc ->
+                            val sId = doc.getString("sender_id") ?: ""
+                            val rId = doc.getString("receiver_id") ?: ""
+                            (sId == myId && rId == otherUserId) || (sId == otherUserId && rId == myId)
+                        }.sortedByDescending { it.getTimestamp("timestamp")?.toDate() ?: Date() }
+
+                        // 2. Get the Most Recent Message for the Preview
+                        val lastMessageDoc = conversationMessages.firstOrNull()
+                        if (lastMessageDoc != null) {
+                            val lastMsgText = lastMessageDoc.getString("message") ?: ""
+                            val senderId = lastMessageDoc.getString("sender_id") ?: ""
+
+                            // Show "You: message" if you sent it, otherwise just the message
+                            tvLastMsg.text = if (senderId == myId) "You: $lastMsgText" else lastMsgText
+
+                            val timestamp = lastMessageDoc.getTimestamp("timestamp")?.toDate() ?: Date()
+                            tvTime.text = formatShortTime(timestamp)
+                        } else {
+                            tvLastMsg.text = "Start a conversation"
+                            tvTime.text = ""
+                        }
+
+                        // 3. Badge Logic: Count messages sent by the OTHER user that are NOT seen
+                        val unreadCount = conversationMessages.count {
+                            it.getString("sender_id") == otherUserId && it.getBoolean("seen") == false
+                        }
+
+                        if (unreadCount > 0) {
+                            tvBadge.visibility = View.VISIBLE
+                            tvBadge.text = unreadCount.toString()
+                            // Optional: Make the name or message bold if unread
+                            tvLastMsg.setTypeface(null, android.graphics.Typeface.BOLD)
+                            tvLastMsg.setTextColor(Color.BLACK)
+                        } else {
+                            tvBadge.visibility = View.GONE
+                            tvLastMsg.setTypeface(null, android.graphics.Typeface.NORMAL)
+                            tvLastMsg.setTextColor(Color.GRAY)
+                        }
+                    }
+
                 view.setOnClickListener {
-                    // We pass the IDs we gathered earlier
                     val chatDialog = LayoutChatDialog(otherUserId, name, myId)
                     chatDialog.show(supportFragmentManager, "LayoutChatDialog")
                 }
-
                 container.addView(view)
             }
     }
+
+    private fun formatShortTime(date: Date): String {
+        val sdp = SimpleDateFormat("h:mm a", Locale.getDefault())
+        return sdp.format(date)
+    }
+
 
 }

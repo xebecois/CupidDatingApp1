@@ -18,7 +18,9 @@
         app:layout_constraintTop_toTopOf="parent"
 
         app:strokeColor="#E94057"
-        app:strokeWidth="2dp" />
+        app:strokeWidth="2dp"
+
+        app:shapeAppearanceOverlay="@style/CircleImage"/>
 
     <TextView
         android:id="@+id/tv_match_name"
@@ -67,6 +69,7 @@
         android:textColor="#FFFFFF"
         android:textSize="10sp"
         android:textStyle="bold"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/tv_match_last_msg"
         app:layout_constraintEnd_toEndOf="parent" />
 
