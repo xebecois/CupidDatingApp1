@@ -32,6 +32,8 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     private var myPassionsList = arrayListOf<String>()
     private val actionHistory = Stack<Boolean>()
 
+    private var myCustomId: String = ""
+
     private val detailsLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -233,25 +235,10 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     override fun onCardSwiped(direction: Direction?) {
         val prefs = getSharedPreferences("CupidPrefs", Context.MODE_PRIVATE)
 
-        if (direction == Direction.Left && !prefs.getBoolean("seen_pass_tutorial", false)) {
-            prefs.edit().putBoolean("seen_pass_tutorial", true).apply()
-            cardStackView.rewind()
-            showTutorialDialog(R.layout.dialog_tutorial_pass, Direction.Left)
-            return
-        }
-
-        if (direction == Direction.Right && !prefs.getBoolean("seen_like_tutorial", false)) {
-            prefs.edit().putBoolean("seen_like_tutorial", true).apply()
-            cardStackView.rewind()
-            showTutorialDialog(R.layout.dialog_tutorial_like, Direction.Right)
-            return
-        }
-
         val user = adapter.getUser(manager.topPosition - 1) ?: return
         when (direction) {
             Direction.Right -> {
-                val type = if (isSuperLikeBtnClicked) "superlike" else "like"
-                saveMatchToFirestore(user, type)
+                saveLikeToFirestore(user.userId)
                 actionHistory.push(true)
                 isSuperLikeBtnClicked = false
             }
@@ -275,30 +262,42 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         dialog.show()
     }
 
-    private fun saveMatchToFirestore(targetUser: DatingUser, type: String) {
+    private fun saveLikeToFirestore(targetCustomId: String) {
         val db = FirebaseFirestore.getInstance()
         val authUid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
         db.collection("tbl_users").document(authUid).get().addOnSuccessListener { myDoc ->
-            val myId = myDoc.getString("user_id") ?: return@addOnSuccessListener
-            val counterRef = db.collection("tbl_counters").document("match_counter")
+            myCustomId = myDoc.getString("user_id") ?: ""
 
-            db.runTransaction { transaction ->
-                val snapshot = transaction.get(counterRef)
-                val count = (snapshot.getLong("count") ?: 9) + 1
-                val matchId = String.format("match_%03d", count)
+            val likeData = hashMapOf(
+                "liker_user_id" to myCustomId,
+                "liked_user_id" to targetCustomId,
+                "timestamp" to FieldValue.serverTimestamp()
+            )
 
-                transaction.set(counterRef, hashMapOf("count" to count))
-                transaction.set(db.collection("tbl_matches").document(matchId), hashMapOf(
-                    "match_id" to matchId,
-                    "liker_user_id" to myId,
-                    "liked_user_id" to targetUser.userId,
-                    "type" to listOf(type),
-                    "match_date" to FieldValue.serverTimestamp()
-                ))
-                null
+            db.collection("tbl_likes").add(likeData).addOnSuccessListener {
+                checkForMutualMatch(targetCustomId)
             }
         }
+    }
+
+    private fun checkForMutualMatch(targetId: String) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("tbl_likes")
+            .whereEqualTo("liker_user_id", targetId)
+            .whereEqualTo("liked_user_id", myCustomId)
+            .get()
+            .addOnSuccessListener { documents ->
+                if (!documents.isEmpty) {
+
+                    val matchData = hashMapOf(
+                        "user_a" to myCustomId,
+                        "user_b" to targetId,
+                        "created_at" to FieldValue.serverTimestamp()
+                    )
+                    db.collection("tbl_matches").add(matchData)
+                }
+            }
     }
 
     private fun calculateAgeFromString(dateString: String): Int {
@@ -319,7 +318,7 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         val myAge = calculateAgeFromString(myDoc.getString("birthday") ?: "")
         val gap = kotlin.math.abs(myAge - theirAge)
         score += if (gap <= 2) 20.0 else if (gap <= 5) 10.0 else 0.0
-        if (myDoc.getString("location") == "No Location") score += 0.0 // Placeholder
+        if (myDoc.getString("location") == "No Location") score += 0.0
         return score.coerceAtMost(100.0).toInt()
     }
 

@@ -50,22 +50,24 @@ class MessagingPage : AppCompatActivity() {
             val myId = myDoc.getString("user_id") ?: ""
             if (myId.isEmpty()) return@addOnSuccessListener
 
-            db.collection("tbl_matches")
-                .whereEqualTo("liker_user_id", myId)
+            db.collection("tbl_likes")
                 .get()
-                .addOnSuccessListener { myLikes ->
-                    for (likeDoc in myLikes) {
-                        val otherUserId = likeDoc.getString("liked_user_id") ?: ""
+                .addOnSuccessListener { allLikes ->
+                    val usersILiked = mutableSetOf<String>()
+                    val usersWhoLikedMe = mutableSetOf<String>()
 
-                        db.collection("tbl_matches")
-                            .whereEqualTo("liker_user_id", otherUserId)
-                            .whereEqualTo("liked_user_id", myId)
-                            .get()
-                            .addOnSuccessListener { reciprocalLikes ->
-                                if (!reciprocalLikes.isEmpty) {
-                                    loadMatchUI(otherUserId, container, myId)
-                                }
-                            }
+                    for (doc in allLikes) {
+                        val liker = doc.getString("liker_user_id") ?: ""
+                        val liked = doc.getString("liked_user_id") ?: ""
+
+                        if (liker == myId) usersILiked.add(liked)
+                        if (liked == myId) usersWhoLikedMe.add(liker)
+                    }
+
+                    val mutualMatches = usersILiked.intersect(usersWhoLikedMe)
+
+                    for (matchUserId in mutualMatches) {
+                        loadMatchUI(matchUserId, container, myId)
                     }
                 }
         }
