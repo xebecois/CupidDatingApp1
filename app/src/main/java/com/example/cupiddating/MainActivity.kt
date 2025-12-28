@@ -53,7 +53,6 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-
         setupWindowInsets()
         setupNavigation()
         setupCardStack()
@@ -129,11 +128,29 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
     }
 
     private fun setupButtons() {
-        findViewById<ImageButton>(R.id.btn_pass).setOnClickListener { performSwipe(Direction.Left) }
+        val prefs = getSharedPreferences("CupidPrefs", Context.MODE_PRIVATE)
+
+        findViewById<ImageButton>(R.id.btn_pass).setOnClickListener {
+            val isFirstTime = prefs.getBoolean("isFirstPass", true)
+            if (isFirstTime) {
+                showTutorialDialog(R.layout.dialog_tutorial_pass, Direction.Left)
+                prefs.edit().putBoolean("isFirstPass", false).apply()
+            } else {
+                performSwipe(Direction.Left)
+            }
+        }
+
         findViewById<ImageButton>(R.id.btn_like).setOnClickListener {
             isSuperLikeBtnClicked = false
-            performSwipe(Direction.Right)
+            val isFirstTime = prefs.getBoolean("isFirstLike", true)
+            if (isFirstTime) {
+                showTutorialDialog(R.layout.dialog_tutorial_like, Direction.Right)
+                prefs.edit().putBoolean("isFirstLike", false).apply()
+            } else {
+                performSwipe(Direction.Right)
+            }
         }
+
         findViewById<ImageButton>(R.id.btn_superLike).setOnClickListener {
             isSuperLikeBtnClicked = true
             performSwipe(Direction.Right)
@@ -322,7 +339,25 @@ class MainActivity : AppCompatActivity(), CardStackListener, FilterBottomSheet.F
         return score.coerceAtMost(100.0).toInt()
     }
 
-    override fun onCardDragging(d: Direction?, r: Float) {}
+    override fun onCardDragging(direction: Direction?, ratio: Float) {
+        val prefs = getSharedPreferences("CupidPrefs", Context.MODE_PRIVATE)
+
+        if (direction == Direction.Right && prefs.getBoolean("isFirstLike", true)) {
+            manager.setCanScrollHorizontal(false)
+            cardStackView.rewind()
+            showTutorialDialog(R.layout.dialog_tutorial_like, Direction.Right)
+            prefs.edit().putBoolean("isFirstLike", false).apply()
+            manager.setCanScrollHorizontal(true)
+        }
+
+        if (direction == Direction.Left && prefs.getBoolean("isFirstPass", true)) {
+            manager.setCanScrollHorizontal(false)
+            cardStackView.rewind()
+            showTutorialDialog(R.layout.dialog_tutorial_pass, Direction.Left)
+            prefs.edit().putBoolean("isFirstPass", false).apply()
+            manager.setCanScrollHorizontal(true)
+        }
+    }
     override fun onCardRewound() {}
     override fun onCardCanceled() {}
     override fun onCardAppeared(v: View?, p: Int) {}

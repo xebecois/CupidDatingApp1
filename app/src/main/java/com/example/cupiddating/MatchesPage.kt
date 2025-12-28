@@ -24,9 +24,8 @@ class MatchesPage : AppCompatActivity() {
     private val db = FirebaseFirestore.getInstance()
     private val authUid = FirebaseAuth.getInstance().currentUser?.uid
 
-    // Store user data maps
     private val activeMatches = ArrayList<Map<String, Any>>()
-    // Store my own custom ID
+
     private var myCustomId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,12 +42,11 @@ class MatchesPage : AppCompatActivity() {
         setupNavigation()
         cardContainer = findViewById(R.id.LL_matchPageInflater)
 
-        // Start process: Get My ID -> Get Excluded IDs -> Fetch Users
         getMyCustomIdAndLoad()
     }
 
     private fun setupNavigation() {
-        // --- BOTTOM NAVBAR ACTION BUTTONS ---
+
         val btnHome: ImageButton = findViewById(R.id.btnHome)
         btnHome.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
@@ -83,43 +81,46 @@ class MatchesPage : AppCompatActivity() {
     private fun fetchAndDisplayMatches() {
         if (myCustomId.isEmpty()) return
 
-        // 1. Get IDs I have already liked from tbl_matches
-        db.collection("tbl_matches")
-            .whereEqualTo("liker_user_id", myCustomId)
+        db.collection("tbl_likes")
             .get()
-            .addOnSuccessListener { interactedDocs ->
-                val excludedIds = mutableSetOf<String>()
-                excludedIds.add(myCustomId)
+            .addOnSuccessListener { allLikes ->
+                val usersILiked = mutableSetOf<String>()
+                val usersWhoLikedMe = mutableSetOf<String>()
 
-                for (doc in interactedDocs) {
-                    val likedId = doc.getString("liked_user_id")
-                    if (likedId != null) excludedIds.add(likedId)
+                for (doc in allLikes) {
+                    val liker = doc.getString("liker_user_id") ?: ""
+                    val liked = doc.getString("liked_user_id") ?: ""
+
+                    if (liker == myCustomId) usersILiked.add(liked)
+                    if (liked == myCustomId) usersWhoLikedMe.add(liker)
                 }
 
-                // 2. Fetch Users
-                db.collection("tbl_users")
-                    .limit(10) // Limit loading
-                    .get()
-                    .addOnSuccessListener { documents ->
-                        activeMatches.clear()
+                val targetUserIds = usersWhoLikedMe
 
-                        for (document in documents) {
-                            // Get Custom ID
-                            val userCustomId = document.getString("user_id") ?: ""
+                activeMatches.clear()
+                if (targetUserIds.isEmpty()) {
+                    populateGrid()
+                    return@addOnSuccessListener
+                }
 
-                            // Skip if empty, self, or already liked
-                            if (userCustomId.isEmpty() || excludedIds.contains(userCustomId)) {
-                                continue
+                var count = 0
+                for (matchUserId in targetUserIds) {
+                    db.collection("tbl_users").whereEqualTo("user_id", matchUserId).get()
+                        .addOnSuccessListener { userDocs ->
+                            if (!userDocs.isEmpty) {
+                                val userMap = userDocs.documents[0].data?.toMutableMap() ?: mutableMapOf()
+                                userMap["user_id"] = matchUserId
+                                userMap["is_mutual_match"] = usersILiked.contains(matchUserId)
+
+                                activeMatches.add(userMap)
                             }
 
-                            val data = document.data
-                            val userMap = data.toMutableMap()
-                            // Ensure "user_id" is explicitly available in the map
-                            userMap["user_id"] = userCustomId
-                            activeMatches.add(userMap)
+                            count++
+                            if (count == targetUserIds.size) {
+                                populateGrid()
+                            }
                         }
-                        populateGrid()
-                    }
+                }
             }
     }
 
@@ -138,12 +139,10 @@ class MatchesPage : AppCompatActivity() {
                 weightSum = 2f
             }
 
-            // Left Card
             val cardLeft = inflater.inflate(R.layout.activity_item_matches_card, rowLayout, false) as CardView
             bindUserDataToCard(cardLeft, activeMatches[i])
             rowLayout.addView(cardLeft)
 
-            // Right Card or Spacer
             if (i + 1 < activeMatches.size) {
                 val cardRight = inflater.inflate(R.layout.activity_item_matches_card, rowLayout, false) as CardView
                 bindUserDataToCard(cardRight, activeMatches[i + 1])
@@ -161,47 +160,45 @@ class MatchesPage : AppCompatActivity() {
 
     private fun bindUserDataToCard(cardView: View, userData: Map<String, Any>) {
         val txtNameAge = cardView.findViewById<TextView>(R.id.txtNameAge)
-        val imgProfile = cardView.findViewById<ImageView>(R.id.imgProfile)
-        val btnPass = cardView.findViewById<ImageButton>(R.id.btnPass)
         val btnLike = cardView.findViewById<ImageButton>(R.id.btnLike)
 
-        val targetCustomId = userData["user_id"] as? String ?: return
-        val name = userData["name"] as? String ?: "Unknown"
-        val dob = userData["birthday"] as? String ?: ""
-        val imageUrl = userData["profile_picture"] as? String ?: ""
-        val age = calculateAgeFromString(dob)
+        val imgProfile = cardView.findViewById<ImageView>(R.id.imgProfile)
 
-        txtNameAge.text = "$name, $age"
+        val isMatch = userData["is_mutual_match"] as? Boolean ?: false
+        val name = userData["name"] as? String ?: "Unknown"
+
+        val imageUrl = userData["profile_picture"] as? String ?: ""
+
+        txtNameAge.text = if (isMatch) "Match: $name" else "Liked You: $name"
 
         if (imageUrl.isNotEmpty()) {
-            Glide.with(this).load(imageUrl).centerCrop().placeholder(android.R.color.darker_gray).into(imgProfile)
+            Glide.with(this)
+                .load(imageUrl)
+                .centerCrop()
+                .into(imgProfile)
         } else {
-            imgProfile.setBackgroundColor(Color.GRAY)
+            imgProfile.setImageResource(android.R.color.darker_gray)
         }
 
-        btnPass.setOnClickListener {
-            Toast.makeText(this, "Passed $name", Toast.LENGTH_SHORT).show()
-            animateCardRemoval(cardView) { removeItemAndRefresh(userData) }
-        }
-
-        // Only "like" available here, no superlike
         btnLike.setOnClickListener {
-            saveMatchToFirestore(targetCustomId, name)
-            animateCardRemoval(cardView) { removeItemAndRefresh(userData) }
+            if (isMatch) {
+                LayoutChatDialog(userData["user_id"] as String, name, myCustomId)
+                    .show(supportFragmentManager, "LayoutChatDialog")
+            } else {
+                saveMatchToFirestore(userData["user_id"] as String, name)
+                fetchAndDisplayMatches()
+            }
         }
     }
 
     private fun saveMatchToFirestore(likedCustomId: String, likedName: String) {
         if (myCustomId.isEmpty()) return
 
-        // 1. TRANSACTIONAL ID GENERATION
-        // We use a counter document to prevent race conditions.
         val counterRef = db.collection("tbl_counters").document("match_counter")
 
         db.runTransaction { transaction ->
             val snapshot = transaction.get(counterRef)
 
-            // Initialize if doesn't exist. Start at 9, so next is 10
             val currentCount = if (snapshot.exists()) {
                 snapshot.getLong("count") ?: 9
             } else {
@@ -211,20 +208,17 @@ class MatchesPage : AppCompatActivity() {
             val nextCount = currentCount + 1
             val newMatchId = String.format("match_%03d", nextCount)
 
-            // Write new count back to counter doc
             val newData = hashMapOf("count" to nextCount)
             transaction.set(counterRef, newData)
 
-            // Prepare Data (Only "like" for this page)
             val matchData = hashMapOf(
                 "match_id" to newMatchId,
                 "liker_user_id" to myCustomId,
                 "liked_user_id" to likedCustomId,
-                "type" to listOf("like"), // Array format
+                "type" to listOf("like"),
                 "match_date" to FieldValue.serverTimestamp()
             )
 
-            // Write the actual match document
             val matchRef = db.collection("tbl_matches").document(newMatchId)
             transaction.set(matchRef, matchData)
 
